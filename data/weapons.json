@@ -1,0 +1,44 @@
+[
+    {
+        "name": "검과 방패",
+        "en": "Default Sword and Shield",
+        "imageKey": "sword-and-shield",
+        "note": "가드로 공격을 막고 휩쓸기로 반격하는 공방일체형 무기.",
+        "tag": "가드"
+    },
+    {
+        "name": "강철 대검",
+        "en": "Steel Greatsword",
+        "imageKey": "steel-greatsword",
+        "note": "느리지만 강력한 피해, 충전식 소용돌이가 특징인 대형 무기.",
+        "tag": "소용돌이"
+    },
+    {
+        "name": "단검",
+        "en": "Dagger",
+        "imageKey": "dagger",
+        "note": "빠른 연속 공격과 패리 후 퓨리 연계를 사용하는 근접 무기.",
+        "tag": "패리"
+    },
+    {
+        "name": "석궁",
+        "en": "Colossal Crossbow",
+        "imageKey": "colossal-crossbow",
+        "note": "탄창과 재장전을 관리하며 원거리 사격을 가하는 무기.",
+        "tag": "원거리"
+    },
+    {
+        "name": "도",
+        "en": "Blade",
+        "imageKey": "blade",
+        "note": "납도와 발도를 전환하며 타이밍에 맞춰 강력한 참격을 가하는 무기.",
+        "tag": "발도"
+    },
+    {
+        "name": "봉",
+        "en": "Quarterstaff",
+        "imageKey": "quarterstaff",
+        "note": "공격과 방어를 겸하며 다양한 전투 방식으로 강화되는 범용형 무기.",
+        "tag": "범용"
+    }
+]

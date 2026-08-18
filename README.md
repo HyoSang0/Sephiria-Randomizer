@@ -20,30 +20,92 @@
 
 ## 🎮 사용 방법
 
-1. `sephiria-randomizer-image.html` 파일을 브라우저에서 열기
+1. 로컬 서버에서 `index.html` 열기
 2. 원하는 카테고리의 **뽑기** 버튼 클릭
 3. 애니메이션과 함께 랜덤 결과가 표시됩니다
 4. **커스텀 빌드**에서는 원하는 항목을 선택 후 뽑기 → 3개 후보 중 택 1
 
 ## 🛠️ 기술 스택
 
-- **HTML5** — 단일 파일 구성 (별도 서버 불필요)
-- **CSS3** — 레트로 픽셀 테마, 애니메이션 효과
+- **HTML5** — 화면 구조와 Firebase 초기화
+- **CSS3** — 레트로 픽셀 테마, 애니메이션 효과 및 6종 외부 픽셀 폰트 정의
 - **Vanilla JavaScript** — 외부 라이브러리 없이 순수 JS로 구현
-- **Galmuri7 폰트** — 픽셀 감성의 커스텀 웹폰트 (Base64 내장)
-- **이미지 에셋** — 무기·캐릭터·인챈트 이미지 Base64 내장
+- **JSON** — 게임 데이터와 강화 트리를 별도 파일로 관리
+- **Firebase Cloud Firestore** — 커뮤니티 빌드 게시판
 
 ## 📁 프로젝트 구조
 
 ```
 Sephiria-Randomizer/
-├── sephiria-randomizer-image.html   # 메인 앱 (올인원 HTML)
+├── index.html                       # 메인 화면 및 Firebase 초기화
+├── data/
+│   ├── weapons.json                 # 무기 목록
+│   ├── costumes.json                # 코스튬 목록
+│   ├── characters.json              # 코스튬별 캐릭터 이미지 정보
+│   ├── combos.json                  # 콤보 목록
+│   └── enchantments.json            # 강화 트리·상세 효과·이미지·무기 연결 정보
+├── js/
+│   ├── constants.js                  # 이미지 URL 및 공통 상수
+│   └── app.js                        # 랜덤 빌드, 렌더링, 이벤트, 게시판 로직
+├── css/
+│   └── style.css                    # 화면 스타일 및 외부 폰트 연결
+├── assets/
+│   └── fonts/                       # 외부 폰트 파일
 ├── README.md
 └── .gitignore
 ```
 
-> 모든 리소스(폰트, 이미지, 스타일, 스크립트)가 단일 HTML 파일에 포함되어 있어  
-> 별도의 설치나 빌드 없이 브라우저에서 바로 실행할 수 있습니다.
+### 파일별 책임
+
+| 파일 | 책임 |
+|---|---|
+| `index.html` | HTML UI, Firebase SDK/config, 외부 CSS·JS 연결 |
+| `data/*.json` | 기능별 게임 데이터. 데이터 수정 시 JS 로직을 변경하지 않음 |
+| `js/constants.js` | 이미지 서버 주소, 확장자 우선순위, WebP 우선 무기 목록 |
+| `js/app.js` | JSON 로딩 후 UI 초기화, 랜덤 선택, 결과 렌더링, 이미지 fallback, 커뮤니티 게시판 |
+| `css/style.css` | 레이아웃, 색상, 반응형 스타일, 애니메이션, 폰트 정의 |
+
+### 폰트 구조 및 분리 가능성
+
+현재 6개 폰트는 `assets/fonts/`의 외부 파일로 분리되어 있으며, `css/style.css`의 `@font-face`가 각 파일을 참조합니다.
+
+- `Galmuri7`
+- `Galmuri9`
+- `Galmuri11` 일반체
+- `Galmuri11` 굵은체
+- `Galmuri14`
+- `PixelRoboRobo`
+
+기존 CSS에 있던 Base64 폰트 데이터를 추출해 외부 파일로 옮겼으므로, CSS 파일 크기와 초기 HTML 요청 크기가 크게 줄었습니다. `Galmuri11`은 일반체와 굵은체를 별도 파일로 유지하고, `PixelRoboRobo`는 원본 형식인 OTF를 유지합니다.
+
+폰트 파일을 변경하거나 교체할 때는 파일명, `font-weight`, 폰트 형식을 함께 확인해야 하며, 브라우저에서 한글 글리프와 굵기 표시를 확인해야 합니다.
+
+```text
+css/
+└── style.css                    # @font-face 경로만 정의
+assets/
+└── fonts/
+    ├── galmuri7.woff2
+    ├── galmuri9.woff2
+    ├── galmuri11-regular.woff2
+    ├── galmuri11-bold.woff2
+    ├── galmuri14.woff2
+    └── pixelroborobo.otf
+```
+
+### 초기화 순서
+
+`app.js`는 DOMContentLoaded 시점에 5개 JSON 파일을 병렬로 `fetch`합니다. 모든 데이터 로딩이 완료되면 전역 데이터 참조를 연결하고 탭, 랜덤 버튼, 커스텀 입력, 커뮤니티 게시판을 초기화합니다. 따라서 게임 데이터에 의존하는 UI가 빈 데이터로 먼저 렌더링되지 않습니다.
+
+### 실행 시 주의사항
+
+`fetch()`로 JSON을 읽기 때문에 `index.html`을 파일 탐색기에서 직접 여는 것보다 로컬 HTTP 서버를 사용하는 것이 안전합니다. 예를 들어 VS Code Live Server 또는 다음 명령을 사용할 수 있습니다.
+
+```bash
+python -m http.server 8000
+```
+
+이후 브라우저에서 `http://localhost:8000/`을 엽니다.
 
 ## 🌿 Git Flow 브랜치 전략
 
