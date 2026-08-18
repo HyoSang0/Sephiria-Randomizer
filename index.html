@@ -1,244 +1,420 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>세피리아 뽑기대 — 랜덤 빌드 생성기</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>세피리아 뽑기대 — 랜덤 빌드 생성기</title>
 
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAZxYru-L3RZ-BOCDbay2uygWUQe0kfXYs",
-    authDomain: "sephiria-randomizer.firebaseapp.com",
-    projectId: "sephiria-randomizer",
-    storageBucket: "sephiria-randomizer.firebasestorage.app",
-    messagingSenderId: "423025870971",
-    appId: "1:423025870971:web:1aa596af5a442ab827fade",
-    measurementId: "G-43QR94CSDZ"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-</script>
+        <!-- Firebase SDK -->
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+        <script>
+            const firebaseConfig = {
+                apiKey: "AIzaSyAZxYru-L3RZ-BOCDbay2uygWUQe0kfXYs",
+                authDomain: "sephiria-randomizer.firebaseapp.com",
+                projectId: "sephiria-randomizer",
+                storageBucket: "sephiria-randomizer.firebasestorage.app",
+                messagingSenderId: "423025870971",
+                appId: "1:423025870971:web:1aa596af5a442ab827fade",
+                measurementId: "G-43QR94CSDZ",
+            };
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+        </script>
 
-<link rel="stylesheet" href="./css/style.css">
-</head>
-<body>
-<div class="wrap">
+        <link rel="stylesheet" href="./css/style.css" />
+    </head>
+    <body>
+        <div class="wrap">
+            <header>
+                <div class="eyebrow">Sephiria · Random Draw Table</div>
+                <h1>세피리아 뽑기대</h1>
+                <p class="sub">
+                    회차가 너무 쌓였다면, 오늘은 룬에게 빌드를 맡겨보세요.<br />무기
+                    · 무기 강화 · 코스튬 · 콤보를 랜덤으로 뽑아드립니다.
+                </p>
+                <span class="patch-tag"
+                    >v1.0.29 기준 데이터 · 비공식 팬 제작</span
+                >
+            </header>
 
-  <header>
-    <div class="eyebrow">Sephiria · Random Draw Table</div>
-    <h1>세피리아 뽑기대</h1>
-    <p class="sub">회차가 너무 쌓였다면, 오늘은 룬에게 빌드를 맡겨보세요.<br>무기 · 무기 강화 · 코스튬 · 콤보를 랜덤으로 뽑아드립니다.</p>
-    <span class="patch-tag">v1.0.29 기준 데이터 · 비공식 팬 제작</span>
-  </header>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="weapon">⚔ 무기</button>
-    <button class="tab" data-tab="enchant">🔨 무기 강화</button>
-    <button class="tab" data-tab="costume">🐇 코스튬</button>
-    <button class="tab" data-tab="combo">🔮 콤보</button>
-    <button class="tab" data-tab="build">🎲 풀 빌드</button>
-    <button class="tab" data-tab="custom">🎯 커스텀 뽑기</button>
-    <button class="tab" data-tab="community">📜 빌드 게시판</button>
-  </div>
-
-  <!-- WEAPON -->
-  <section class="panel active" id="panel-weapon">
-    <p class="desc">6개 무기 계열 중 오늘 들 무기를 뽑습니다. 검과 방패·강철 대검·단검·석궁·도·봉</p>
-    <div class="stage">
-      <div class="rune">Draw</div>
-      <div class="card" id="card-weapon">
-        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="roll('weapon')">무기 뽑기</button></div>
-    <div class="history" id="hist-weapon"></div>
-  </section>
-
-  <!-- ENCHANT -->
-  <section class="panel" id="panel-enchant">
-    <p class="desc">기본 무기 → 1차 강화 → 2차 강화까지 이어지는 실제 강화 트리에서 랜덤으로 한 경로를 뽑습니다. 모루에서 오늘 뭘 박을지 고민될 때 써보세요.</p>
-    <div class="stage">
-      <div class="rune">Anvil</div>
-      <div class="card" id="card-enchant">
-        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="roll('enchant')">무기 강화 뽑기</button></div>
-    <div class="history" id="hist-enchant"></div>
-  </section>
-
-  <!-- COSTUME -->
-  <section class="panel" id="panel-costume">
-    <p class="desc">기본·해금·히든 코스튬을 통틀어 랜덤으로 뽑습니다. 등급은 해금 난이도의 대략적인 구분이에요.</p>
-    <div class="stage">
-      <div class="rune">Wardrobe</div>
-      <div class="card" id="card-costume">
-        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="roll('costume')">코스튬 뽑기</button></div>
-    <div class="history" id="hist-costume"></div>
-  </section>
-
-  <!-- COMBO -->
-  <section class="panel" id="panel-combo">
-    <p class="desc">아티팩트 태그(콤보) 20종 중에서 뽑습니다. 몇 개를 같이 뽑아 오늘의 빌드 방향을 정할지 골라보세요.</p>
-    <div class="count-select" id="combo-count">
-      <button class="on" data-n="1">1개</button>
-      <button data-n="2">2개</button>
-      <button data-n="3">3개</button>
-    </div>
-    <div class="stage">
-      <div class="rune">Root of Wish</div>
-      <div class="card" id="card-combo">
-        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="roll('combo')">콤보 뽑기</button></div>
-    <div class="history" id="hist-combo"></div>
-  </section>
-
-  <!-- FULL BUILD -->
-  <section class="panel" id="panel-build">
-    <p class="desc">무기 강화 + 코스튬 + 콤보 2개를 한 번에 뽑아 오늘의 챌린지 런 조합을 만들어줍니다.</p>
-    <div class="stage">
-      <div class="rune">Descent</div>
-      <div class="card" id="card-build">
-        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="roll('build')">오늘의 런 뽑기</button></div>
-  </section>
-
-  <!-- CUSTOM MULTI -->
-  <section class="panel" id="panel-custom">
-    <p class="desc">원하는 항목만 골라서 세 조합을 동시에 뽑고, 그중 마음에 드는 하나를 골라보세요. 무기와 무기 강화를 함께 선택하면 서로 맞는 계열끼리만 짝지어져서 나와요 (예: 검과 방패가 나오면 강화도 검과 방패 강화 트리에서만 나옴).</p>
-    <div class="count-select" id="custom-picks">
-      <button class="on" data-key="weapon">⚔ 무기</button>
-      <button class="on" data-key="enchant">🔨 무기 강화</button>
-      <button class="on" data-key="costume">🐇 코스튬</button>
-      <button data-key="combo">🔮 콤보</button>
-    </div>
-    <div class="count-select" id="custom-combo-count" style="display:none;">
-      <span style="font-size:12px;color:var(--muted-dim);align-self:center;margin-right:2px;">콤보 개수</span>
-      <button class="on" data-n="1">1개</button>
-      <button data-n="2">2개</button>
-      <button data-n="3">3개</button>
-    </div>
-    <div class="stage" style="align-items:stretch;">
-      <div class="rune" style="text-align:center;">Custom Draw</div>
-      <div id="card-custom" style="display:flex; flex-direction:column; gap:16px;">
-        <p class="placeholder" style="text-align:center;">항목을 고르고 뽑기 버튼을 누르면 3가지 조합이 나와요</p>
-      </div>
-    </div>
-    <div class="btn-row"><button class="roll-btn" onclick="rollCustom()">3개 뽑고 고르기</button></div>
-  </section>
-
-  <!-- COMMUNITY BOARD -->
-  <section class="panel" id="panel-community">
-    <p class="desc">자신만의 독특한 빌드를 공유하거나 다른 사람의 빌드를 구경해보세요.</p>
-    
-    <button class="load-current-btn" onclick="loadCurrentRollToForm()">⬇ 현재 뽑기 결과(풀 빌드) 불러오기</button>
-    
-    <div class="build-form" id="build-submit-form" style="display:none;">
-      <h3 class="build-form-title">새 빌드 등록</h3>
-      <div class="form-row">
-        <div class="form-group">
-          <label>닉네임</label>
-          <input type="text" id="cb-author" placeholder="빌더 이름 (최대 10자)" maxlength="10">
-        </div>
-        <div class="form-group">
-          <label>베이스 무기</label>
-          <div class="custom-select-wrapper" id="cb-enchant-base-wrapper">
-            <div class="custom-select" id="cb-enchant-base-display" onclick="toggleCustomSelect('cb-enchant-base-options')">
-              <div class="custom-select-selected">- 선택 -</div>
-              <div>▼</div>
+            <div class="tabs">
+                <button class="tab active" data-tab="weapon">⚔ 무기</button>
+                <button class="tab" data-tab="enchant">🔨 무기 강화</button>
+                <button class="tab" data-tab="costume">🐇 코스튬</button>
+                <button class="tab" data-tab="combo">🔮 콤보</button>
+                <button class="tab" data-tab="build">🎲 풀 빌드</button>
+                <button class="tab" data-tab="custom">🎯 커스텀 뽑기</button>
+                <button class="tab" data-tab="community">📜 빌드 게시판</button>
             </div>
-            <div class="custom-select-options" id="cb-enchant-base-options">
-              <!-- JS will populate options -->
+
+            <!-- WEAPON -->
+            <section class="panel active" id="panel-weapon">
+                <p class="desc">
+                    6개 무기 계열 중 오늘 들 무기를 뽑습니다. 검과 방패·강철
+                    대검·단검·석궁·도·봉
+                </p>
+                <div class="stage">
+                    <div class="rune">Draw</div>
+                    <div class="card" id="card-weapon">
+                        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="roll('weapon')">
+                        무기 뽑기
+                    </button>
+                </div>
+                <div class="history" id="hist-weapon"></div>
+            </section>
+
+            <!-- ENCHANT -->
+            <section class="panel" id="panel-enchant">
+                <p class="desc">
+                    기본 무기 → 1차 강화 → 2차 강화까지 이어지는 실제 강화
+                    트리에서 랜덤으로 한 경로를 뽑습니다. 모루에서 오늘 뭘
+                    박을지 고민될 때 써보세요.
+                </p>
+                <div class="stage">
+                    <div class="rune">Anvil</div>
+                    <div class="card" id="card-enchant">
+                        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="roll('enchant')">
+                        무기 강화 뽑기
+                    </button>
+                </div>
+                <div class="history" id="hist-enchant"></div>
+            </section>
+
+            <!-- COSTUME -->
+            <section class="panel" id="panel-costume">
+                <p class="desc">
+                    기본·해금·히든 코스튬을 통틀어 랜덤으로 뽑습니다. 등급은
+                    해금 난이도의 대략적인 구분이에요.
+                </p>
+                <div class="stage">
+                    <div class="rune">Wardrobe</div>
+                    <div class="card" id="card-costume">
+                        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="roll('costume')">
+                        코스튬 뽑기
+                    </button>
+                </div>
+                <div class="history" id="hist-costume"></div>
+            </section>
+
+            <!-- COMBO -->
+            <section class="panel" id="panel-combo">
+                <p class="desc">
+                    아티팩트 태그(콤보) 20종 중에서 뽑습니다. 몇 개를 같이 뽑아
+                    오늘의 빌드 방향을 정할지 골라보세요.
+                </p>
+                <div class="count-select" id="combo-count">
+                    <button class="on" data-n="1">1개</button>
+                    <button data-n="2">2개</button>
+                    <button data-n="3">3개</button>
+                </div>
+                <div class="stage">
+                    <div class="rune">Root of Wish</div>
+                    <div class="card" id="card-combo">
+                        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="roll('combo')">
+                        콤보 뽑기
+                    </button>
+                </div>
+                <div class="history" id="hist-combo"></div>
+            </section>
+
+            <!-- FULL BUILD -->
+            <section class="panel" id="panel-build">
+                <p class="desc">
+                    무기 강화 + 코스튬 + 콤보 2개를 한 번에 뽑아 오늘의 챌린지
+                    런 조합을 만들어줍니다.
+                </p>
+                <div class="stage">
+                    <div class="rune">Descent</div>
+                    <div class="card" id="card-build">
+                        <p class="placeholder">뽑기 버튼을 눌러보세요</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="roll('build')">
+                        오늘의 런 뽑기
+                    </button>
+                </div>
+            </section>
+
+            <!-- CUSTOM MULTI -->
+            <section class="panel" id="panel-custom">
+                <p class="desc">
+                    원하는 항목만 골라서 세 조합을 동시에 뽑고, 그중 마음에 드는
+                    하나를 골라보세요. 무기와 무기 강화를 함께 선택하면 서로
+                    맞는 계열끼리만 짝지어져서 나와요 (예: 검과 방패가 나오면
+                    강화도 검과 방패 강화 트리에서만 나옴).
+                </p>
+                <div class="count-select" id="custom-picks">
+                    <button class="on" data-key="weapon">⚔ 무기</button>
+                    <button class="on" data-key="enchant">🔨 무기 강화</button>
+                    <button class="on" data-key="costume">🐇 코스튬</button>
+                    <button data-key="combo">🔮 콤보</button>
+                </div>
+                <div
+                    class="count-select"
+                    id="custom-combo-count"
+                    style="display: none"
+                >
+                    <span
+                        style="
+                            font-size: 12px;
+                            color: var(--muted-dim);
+                            align-self: center;
+                            margin-right: 2px;
+                        "
+                        >콤보 개수</span
+                    >
+                    <button class="on" data-n="1">1개</button>
+                    <button data-n="2">2개</button>
+                    <button data-n="3">3개</button>
+                </div>
+                <div class="stage" style="align-items: stretch">
+                    <div class="rune" style="text-align: center">
+                        Custom Draw
+                    </div>
+                    <div
+                        id="card-custom"
+                        style="display: flex; flex-direction: column; gap: 16px"
+                    >
+                        <p class="placeholder" style="text-align: center">
+                            항목을 고르고 뽑기 버튼을 누르면 3가지 조합이 나와요
+                        </p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="roll-btn" onclick="rollCustom()">
+                        3개 뽑고 고르기
+                    </button>
+                </div>
+            </section>
+
+            <!-- COMMUNITY BOARD -->
+            <section class="panel" id="panel-community">
+                <p class="desc">
+                    자신만의 독특한 빌드를 공유하거나 다른 사람의 빌드를
+                    구경해보세요.
+                </p>
+
+                <button
+                    class="load-current-btn"
+                    onclick="loadCurrentRollToForm()"
+                >
+                    ⬇ 현재 뽑기 결과(풀 빌드) 불러오기
+                </button>
+
+                <div
+                    class="build-form"
+                    id="build-submit-form"
+                    style="display: none"
+                >
+                    <h3 class="build-form-title">새 빌드 등록</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>닉네임</label>
+                            <input
+                                type="text"
+                                id="cb-author"
+                                placeholder="빌더 이름 (최대 10자)"
+                                maxlength="10"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label>베이스 무기</label>
+                            <div
+                                class="custom-select-wrapper"
+                                id="cb-enchant-base-wrapper"
+                            >
+                                <div
+                                    class="custom-select"
+                                    id="cb-enchant-base-display"
+                                    onclick="
+                                        toggleCustomSelect(
+                                            'cb-enchant-base-options',
+                                        )
+                                    "
+                                >
+                                    <div class="custom-select-selected">
+                                        - 선택 -
+                                    </div>
+                                    <div>▼</div>
+                                </div>
+                                <div
+                                    class="custom-select-options"
+                                    id="cb-enchant-base-options"
+                                >
+                                    <!-- JS will populate options -->
+                                </div>
+                            </div>
+                            <input
+                                type="hidden"
+                                id="cb-enchant-base"
+                                onchange="updateT1Dropdown()"
+                            />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>T1 강화</label>
+                            <select
+                                id="cb-enchant-t1"
+                                onchange="updateT2Dropdown()"
+                            >
+                                <option value="">- 선택 -</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>T2 강화</label>
+                            <select id="cb-enchant-t2">
+                                <option value="">- 선택 -</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>코스튬</label>
+                            <div
+                                class="custom-select-wrapper"
+                                id="cb-costume-wrapper"
+                            >
+                                <div
+                                    class="custom-select"
+                                    id="cb-costume-display"
+                                    onclick="
+                                        toggleCustomSelect('cb-costume-options')
+                                    "
+                                >
+                                    <div class="custom-select-selected">
+                                        - 선택 -
+                                    </div>
+                                    <div>▼</div>
+                                </div>
+                                <div
+                                    class="custom-select-options"
+                                    id="cb-costume-options"
+                                >
+                                    <!-- JS will populate options -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="cb-costume" />
+                        </div>
+                        <div class="form-group">
+                            <label>과일 꼬치</label>
+                            <input
+                                type="text"
+                                id="cb-fruit"
+                                placeholder="예: 바나나-딸기-키위"
+                            />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>콤보</label>
+                            <input
+                                type="text"
+                                id="cb-combo"
+                                placeholder="사용 콤보"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label>핵심 아티팩트</label>
+                            <input
+                                type="text"
+                                id="cb-artifact"
+                                placeholder="주요 아티팩트"
+                            />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>빌드 설명 및 팁</label>
+                        <textarea
+                            id="cb-desc"
+                            rows="3"
+                            placeholder="운영 방법이나 장단점을 자유롭게 적어주세요."
+                        ></textarea>
+                    </div>
+                    <div class="btn-row">
+                        <button
+                            class="submit-btn"
+                            id="cb-submit-btn"
+                            onclick="submitBuild()"
+                        >
+                            등록하기
+                        </button>
+                        <button
+                            class="load-current-btn"
+                            onclick="toggleBuildForm()"
+                            style="
+                                margin: 8px 0 0 0;
+                                border-style: solid;
+                                background: transparent;
+                            "
+                        >
+                            취소
+                        </button>
+                    </div>
+                </div>
+
+                <div class="btn-row" id="build-form-toggle-wrap">
+                    <button
+                        class="roll-btn"
+                        style="
+                            background: var(--card-bg);
+                            border-color: var(--border-light);
+                        "
+                        onclick="toggleBuildForm()"
+                    >
+                        + 새 빌드 공유하기
+                    </button>
+                </div>
+
+                <div class="community-list" id="community-list">
+                    <p
+                        class="placeholder"
+                        style="text-align: center; padding: 30px"
+                    >
+                        빌드를 불러오는 중입니다...
+                    </p>
+                </div>
+            </section>
+
+            <footer>
+                무기·강화·코스튬·콤보 명칭은 세피리아(TEAM HORAY) 게임 및
+                나무위키 문서를 참고해 정리했습니다.<br />
+                실제 게임 밸런스와 다를 수 있으니 재미로 즐겨주세요.
+            </footer>
+        </div>
+
+        <div
+            class="modal-overlay"
+            id="detail-overlay"
+            onclick="if (event.target === this) closeEnchantDetail();"
+        >
+            <div class="modal-panel">
+                <button class="modal-close" onclick="closeEnchantDetail()">
+                    ✕
+                </button>
+                <div id="detail-content"></div>
             </div>
-          </div>
-          <input type="hidden" id="cb-enchant-base" onchange="updateT1Dropdown()">
         </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>T1 강화</label>
-          <select id="cb-enchant-t1" onchange="updateT2Dropdown()">
-            <option value="">- 선택 -</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>T2 강화</label>
-          <select id="cb-enchant-t2">
-            <option value="">- 선택 -</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>코스튬</label>
-          <div class="custom-select-wrapper" id="cb-costume-wrapper">
-            <div class="custom-select" id="cb-costume-display" onclick="toggleCustomSelect('cb-costume-options')">
-              <div class="custom-select-selected">- 선택 -</div>
-              <div>▼</div>
-            </div>
-            <div class="custom-select-options" id="cb-costume-options">
-              <!-- JS will populate options -->
-            </div>
-          </div>
-          <input type="hidden" id="cb-costume">
-        </div>
-        <div class="form-group">
-          <label>과일 꼬치</label>
-          <input type="text" id="cb-fruit" placeholder="예: 바나나-딸기-키위">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>콤보</label>
-          <input type="text" id="cb-combo" placeholder="사용 콤보">
-        </div>
-        <div class="form-group">
-          <label>핵심 아티팩트</label>
-          <input type="text" id="cb-artifact" placeholder="주요 아티팩트">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>빌드 설명 및 팁</label>
-        <textarea id="cb-desc" rows="3" placeholder="운영 방법이나 장단점을 자유롭게 적어주세요."></textarea>
-      </div>
-      <div class="btn-row">
-        <button class="submit-btn" id="cb-submit-btn" onclick="submitBuild()">등록하기</button>
-        <button class="load-current-btn" onclick="toggleBuildForm()" style="margin:8px 0 0 0; border-style:solid; background:transparent;">취소</button>
-      </div>
-    </div>
-    
-    <div class="btn-row" id="build-form-toggle-wrap">
-      <button class="roll-btn" style="background:var(--card-bg); border-color:var(--border-light);" onclick="toggleBuildForm()">+ 새 빌드 공유하기</button>
-    </div>
 
-    <div class="community-list" id="community-list">
-      <p class="placeholder" style="text-align:center; padding:30px;">빌드를 불러오는 중입니다...</p>
-    </div>
-  </section>
-
-  <footer>
-    무기·강화·코스튬·콤보 명칭은 세피리아(TEAM HORAY) 게임 및 나무위키 문서를 참고해 정리했습니다.<br>
-    실제 게임 밸런스와 다를 수 있으니 재미로 즐겨주세요.
-  </footer>
-</div>
-
-<div class="modal-overlay" id="detail-overlay" onclick="if(event.target===this) closeEnchantDetail()">
-  <div class="modal-panel">
-    <button class="modal-close" onclick="closeEnchantDetail()">✕</button>
-    <div id="detail-content"></div>
-  </div>
-</div>
-
-<script src="./js/constants.js"></script><script src="./js/app.js"></script>
-</body>
+        <script src="./js/constants.js"></script>
+        <script src="./js/app.js"></script>
+    </body>
 </html>
