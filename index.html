@@ -567,11 +567,13 @@
   .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none; border-color:var(--accent); }
   .form-row { display:flex; gap:12px; }
   .form-row .form-group { flex:1; }
-  .submit-btn { width:100%; padding:12px; margin-top:8px; background:var(--accent); color:#121212; border:2px solid #000; font-family:'Galmuri7', sans-serif; font-size:15px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,0.3); border-radius:4px; transition:transform 0.1s, box-shadow 0.1s; }
+  .submit-btn { width:100%; padding:12px; margin-top:8px; background:#4caf50; color:#000000; font-weight:bold; border:2px solid #2e7d32; font-family:'Galmuri7', sans-serif; font-size:15px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,0.4); border-radius:4px; transition:transform 0.1s, box-shadow 0.1s; }
+  .submit-btn:hover { background:#66bb6a; }
   .submit-btn:active { transform:translateY(4px); box-shadow:0 0 0 rgba(0,0,0,0); }
   .submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:0 4px 0 rgba(0,0,0,0.3); }
-  .load-current-btn { background:var(--bg); color:var(--text); border:1px dashed var(--border-light); font-family:'Galmuri7', sans-serif; padding:8px 12px; font-size:12px; cursor:pointer; width:100%; margin-bottom:16px; border-radius:2px; transition:all 0.2s; }
-  .load-current-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .load-current-btn { background:#ffd54f; color:#000000; font-weight:bold; border:2px solid #fbc02d; font-family:'Galmuri7', sans-serif; padding:10px 14px; font-size:13px; cursor:pointer; width:100%; margin-bottom:16px; border-radius:4px; box-shadow:0 3px 0 rgba(0,0,0,0.3); transition:all 0.15s; }
+  .load-current-btn:hover { background:#ffe082; transform:translateY(-1px); }
+  .load-current-btn:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.3); }
 
   /* Custom Select Styles */
   .custom-select-wrapper { position: relative; user-select: none; width: 100%; }
