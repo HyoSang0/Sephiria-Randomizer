@@ -28,7 +28,7 @@
 ## 🛠️ 기술 스택
 
 - **HTML5** — 화면 구조와 Firebase 초기화
-- **CSS3** — 레트로 픽셀 테마, 애니메이션 효과
+- **CSS3** — 레트로 픽셀 테마, 애니메이션 효과 및 6종 외부 픽셀 폰트 정의
 - **Vanilla JavaScript** — 외부 라이브러리 없이 순수 JS로 구현
 - **JSON** — 게임 데이터와 강화 트리를 별도 파일로 관리
 - **Firebase Cloud Firestore** — 커뮤니티 빌드 게시판
@@ -44,7 +44,9 @@ Sephiria-Randomizer/
 │   ├── constants.js                  # 이미지 URL 및 공통 상수
 │   └── app.js                        # 랜덤 빌드, 렌더링, 이벤트, 게시판 로직
 ├── css/
-│   └── style.css                    # 화면 스타일 및 폰트 정의
+│   └── style.css                    # 화면 스타일 및 외부 폰트 연결
+├── assets/
+│   └── fonts/                       # 외부 폰트 파일
 ├── README.md
 └── .gitignore
 ```
@@ -57,7 +59,35 @@ Sephiria-Randomizer/
 | `data/sephiria.json` | 런타임에서 불러오는 게임 데이터. 데이터 수정 시 JS 로직을 변경하지 않음 |
 | `js/constants.js` | 이미지 서버 주소, 확장자 우선순위, WebP 우선 무기 목록 |
 | `js/app.js` | JSON 로딩 후 UI 초기화, 랜덤 선택, 결과 렌더링, 이미지 fallback, 커뮤니티 게시판 |
-| `css/style.css` | 레이아웃, 색상, 반응형 스타일, 애니메이션, 폰트 |
+| `css/style.css` | 레이아웃, 색상, 반응형 스타일, 애니메이션, 폰트 정의 |
+
+### 폰트 구조 및 분리 가능성
+
+현재 6개 폰트는 `assets/fonts/`의 외부 파일로 분리되어 있으며, `css/style.css`의 `@font-face`가 각 파일을 참조합니다.
+
+- `Galmuri7`
+- `Galmuri9`
+- `Galmuri11` 일반체
+- `Galmuri11` 굵은체
+- `Galmuri14`
+- `PixelRoboRobo`
+
+기존 CSS에 있던 Base64 폰트 데이터를 추출해 외부 파일로 옮겼으므로, CSS 파일 크기와 초기 HTML 요청 크기가 크게 줄었습니다. `Galmuri11`은 일반체와 굵은체를 별도 파일로 유지하고, `PixelRoboRobo`는 원본 형식인 OTF를 유지합니다.
+
+폰트 파일을 변경하거나 교체할 때는 파일명, `font-weight`, 폰트 형식을 함께 확인해야 하며, 브라우저에서 한글 글리프와 굵기 표시를 확인해야 합니다.
+
+```text
+css/
+└── style.css                    # @font-face 경로만 정의
+assets/
+└── fonts/
+    ├── galmuri7.woff2
+    ├── galmuri9.woff2
+    ├── galmuri11-regular.woff2
+    ├── galmuri11-bold.woff2
+    ├── galmuri14.woff2
+    └── pixelroborobo.otf
+```
 
 ### 초기화 순서
 
