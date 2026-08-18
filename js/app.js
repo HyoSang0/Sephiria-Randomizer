@@ -7,17 +7,29 @@ let WEAPON_TYPES,
     ENCHANT_DETAILS,
     WEAPON_ENCHANT_MAP;
 async function loadGameData() {
-    const response = await fetch("./data/sephiria.json");
-    if (!response.ok) throw new Error("?? ???? ???? ?????.");
-    const data = await response.json();
-    WEAPON_TYPES = data.weapons;
-    COSTUMES = data.costumes;
-    CHARACTER_ASSETS = data.characterAssets;
-    ENCHANT_IMAGE_KEYS = data.enchantImageKeys;
-    COMBOS = data.combos;
-    ENCHANT_TREE = data.enchantTree;
-    ENCHANT_DETAILS = data.enchantDetails;
-    WEAPON_ENCHANT_MAP = data.weaponEnchantMap;
+    const files = await Promise.all([
+        fetch("./data/weapons.json"),
+        fetch("./data/costumes.json"),
+        fetch("./data/characters.json"),
+        fetch("./data/combos.json"),
+        fetch("./data/enchantments.json")
+    ]);
+
+    if (files.some(response => !response.ok)) {
+        throw new Error("게임 데이터를 불러오지 못했습니다.");
+    }
+
+    const [weapons, costumes, characters, combos, enchantments] =
+        await Promise.all(files.map(response => response.json()));
+
+    WEAPON_TYPES = weapons;
+    COSTUMES = costumes;
+    CHARACTER_ASSETS = characters;
+    COMBOS = combos;
+    ENCHANT_IMAGE_KEYS = enchantments.imageKeys;
+    ENCHANT_TREE = enchantments.tree;
+    ENCHANT_DETAILS = enchantments.details;
+    WEAPON_ENCHANT_MAP = enchantments.weaponMap;
 }
 /* ================= STATE ================= */
 let comboCount = 1;

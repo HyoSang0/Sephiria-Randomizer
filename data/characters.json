@@ -1,0 +1,114 @@
+{
+    "분홍 토끼": {
+        "en": "Pink Bunny",
+        "slug": "pinkrabbit"
+    },
+    "갑옷을 입은 토끼": {
+        "en": "Armored Bunny",
+        "slug": "armoredrabbit"
+    },
+    "갈색 토끼": {
+        "en": "Brown Rabbit",
+        "slug": "brownrabbit"
+    },
+    "땋은 머리 토끼": {
+        "en": "Braided Hair Rabbit",
+        "slug": "darkbrownrabbit"
+    },
+    "주황색 토끼": {
+        "en": "Orange Rabbit",
+        "slug": "mandarinrabbit"
+    },
+    "빨간망토 토끼": {
+        "en": "Red-Hooded Rabbit",
+        "slug": "redholyrabbit"
+    },
+    "흰색 토끼": {
+        "en": "White Rabbit",
+        "slug": "whiterabbit"
+    },
+    "날개 귀 토끼": {
+        "en": "Wing-Eared Rabbit",
+        "slug": "holyrabbit"
+    },
+    "붉은 옷 고양이": {
+        "en": "Red-Clothed Cat",
+        "slug": "firecat"
+    },
+    "붉은 여우": {
+        "en": "Red Fox",
+        "slug": "fox"
+    },
+    "개구리": {
+        "en": "Frog",
+        "slug": "frog"
+    },
+    "두더지": {
+        "en": "Mole",
+        "slug": "mole"
+    },
+    "수달": {
+        "en": "Otter",
+        "slug": "otter"
+    },
+    "하얀 늑대": {
+        "en": "White Wolf",
+        "slug": "whitewolf"
+    },
+    "마법사 토끼": {
+        "en": "Wizard Bunny",
+        "slug": "wizardrabbit"
+    },
+    "독수리": {
+        "en": "Eagle",
+        "slug": "bird"
+    },
+    "악어": {
+        "en": "Crocodile",
+        "slug": "crocodile"
+    },
+    "사슴": {
+        "en": "Deer",
+        "slug": "deer"
+    },
+    "행운의 요정": {
+        "en": "Fairy of Fortune",
+        "slug": "luck"
+    },
+    "농부 다람쥐": {
+        "en": "Farmer Squirrel",
+        "slug": "squirrel"
+    },
+    "거북이": {
+        "en": "Turtle",
+        "slug": "turtle"
+    },
+    "숲 고양이": {
+        "en": "Forest Cat",
+        "slug": "forestcat"
+    },
+    "유령": {
+        "en": "Ghost",
+        "slug": "ghost"
+    },
+    "학자 도마뱀": {
+        "en": "Scholar Lizard",
+        "slug": "seren"
+    },
+    "스켈레톤": {
+        "en": "Skeleton",
+        "slug": "skeleton"
+    },
+    "날개 잃은 박쥐": {
+        "en": "Wingless Bat",
+        "slug": "bat"
+    },
+    "모험가 토끼": {
+        "en": "Adventurer Bunny",
+        "slug": "adventurerrabbit"
+    },
+    "붉은 괴물 토끼": {
+        "en": "Red Monster Rabbit",
+        "slug": "redmonsterrabbit"
+    }
+}

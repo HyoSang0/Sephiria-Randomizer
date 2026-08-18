@@ -39,7 +39,11 @@
 Sephiria-Randomizer/
 ├── index.html                       # 메인 화면 및 Firebase 초기화
 ├── data/
-│   └── sephiria.json                # 무기·코스튬·콤보·강화 데이터
+│   ├── weapons.json                 # 무기 목록
+│   ├── costumes.json                # 코스튬 목록
+│   ├── characters.json              # 코스튬별 캐릭터 이미지 정보
+│   ├── combos.json                  # 콤보 목록
+│   └── enchantments.json            # 강화 트리·상세 효과·이미지·무기 연결 정보
 ├── js/
 │   ├── constants.js                  # 이미지 URL 및 공통 상수
 │   └── app.js                        # 랜덤 빌드, 렌더링, 이벤트, 게시판 로직
@@ -56,7 +60,7 @@ Sephiria-Randomizer/
 | 파일 | 책임 |
 |---|---|
 | `index.html` | HTML UI, Firebase SDK/config, 외부 CSS·JS 연결 |
-| `data/sephiria.json` | 런타임에서 불러오는 게임 데이터. 데이터 수정 시 JS 로직을 변경하지 않음 |
+| `data/*.json` | 기능별 게임 데이터. 데이터 수정 시 JS 로직을 변경하지 않음 |
 | `js/constants.js` | 이미지 서버 주소, 확장자 우선순위, WebP 우선 무기 목록 |
 | `js/app.js` | JSON 로딩 후 UI 초기화, 랜덤 선택, 결과 렌더링, 이미지 fallback, 커뮤니티 게시판 |
 | `css/style.css` | 레이아웃, 색상, 반응형 스타일, 애니메이션, 폰트 정의 |
@@ -91,7 +95,7 @@ assets/
 
 ### 초기화 순서
 
-`app.js`는 DOMContentLoaded 시점에 먼저 `data/sephiria.json`을 `fetch`합니다. 데이터 로딩이 완료되면 전역 데이터 참조를 연결하고 탭, 랜덤 버튼, 커스텀 입력, 커뮤니티 게시판을 초기화합니다. 따라서 게임 데이터에 의존하는 UI가 빈 데이터로 먼저 렌더링되지 않습니다.
+`app.js`는 DOMContentLoaded 시점에 5개 JSON 파일을 병렬로 `fetch`합니다. 모든 데이터 로딩이 완료되면 전역 데이터 참조를 연결하고 탭, 랜덤 버튼, 커스텀 입력, 커뮤니티 게시판을 초기화합니다. 따라서 게임 데이터에 의존하는 UI가 빈 데이터로 먼저 렌더링되지 않습니다.
 
 ### 실행 시 주의사항
 
