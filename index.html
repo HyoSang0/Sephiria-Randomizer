@@ -701,18 +701,32 @@
           <input type="text" id="cb-author" placeholder="빌더 이름 (최대 10자)" maxlength="10">
         </div>
         <div class="form-group">
-          <label>무기</label>
-          <input type="text" id="cb-weapon" placeholder="무기 이름">
+          <label>베이스 무기</label>
+          <select id="cb-enchant-base" onchange="updateT1Dropdown()">
+            <option value="">- 선택 -</option>
+          </select>
         </div>
       </div>
-      <div class="form-group">
-        <label>무기 강화 (베이스 / T1 / T2)</label>
-        <input type="text" id="cb-enchant" placeholder="예: 단검 / 맹독 단검 / 암살자의 단검">
+      <div class="form-row">
+        <div class="form-group">
+          <label>T1 강화</label>
+          <select id="cb-enchant-t1" onchange="updateT2Dropdown()">
+            <option value="">- 선택 -</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>T2 강화</label>
+          <select id="cb-enchant-t2">
+            <option value="">- 선택 -</option>
+          </select>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>코스튬</label>
-          <input type="text" id="cb-costume" placeholder="코스튬 이름">
+          <select id="cb-costume">
+            <option value="">- 선택 -</option>
+          </select>
         </div>
         <div class="form-group">
           <label>과일 꼬치</label>
@@ -1539,9 +1553,26 @@ function loadCurrentRollToForm() {
     const titles = buildCard.querySelectorAll('.history b');
     const bTexts = Array.from(titles).map(b => b.innerText);
     if(bTexts.length >= 3) {
-      document.getElementById('cb-weapon').value = bTexts[0] || '';
-      document.getElementById('cb-enchant').value = bTexts[1] || '';
+      let baseVal = '', t1Val = '', t2Val = '';
+      const enchantTxt = bTexts[1];
+      const matchTree = ENCHANT_TREE.find(e => e.t1 === enchantTxt || (e.t2 && e.t2.includes(enchantTxt)));
+      if (matchTree) {
+        baseVal = matchTree.base;
+        t1Val = matchTree.t1;
+        t2Val = matchTree.t2 && matchTree.t2.includes(enchantTxt) ? enchantTxt : '';
+      }
+      
+      const cbBase = document.getElementById('cb-enchant-base');
+      cbBase.value = baseVal;
+      updateT1Dropdown();
+      const cbT1 = document.getElementById('cb-enchant-t1');
+      cbT1.value = t1Val;
+      updateT2Dropdown();
+      const cbT2 = document.getElementById('cb-enchant-t2');
+      cbT2.value = t2Val;
+
       document.getElementById('cb-costume').value = bTexts[2] || '';
+      
       if(bTexts.length > 3) {
         document.getElementById('cb-combo').value = bTexts.slice(3).join(', ');
       }
@@ -1552,6 +1583,38 @@ function loadCurrentRollToForm() {
   } else {
     alert('먼저 [풀 빌드] 탭에서 빌드를 뽑아주세요!');
   }
+}
+
+function updateT1Dropdown() {
+  const baseVal = document.getElementById('cb-enchant-base').value;
+  const t1Select = document.getElementById('cb-enchant-t1');
+  t1Select.innerHTML = '<option value="">- 선택 -</option>';
+  const t2Select = document.getElementById('cb-enchant-t2');
+  t2Select.innerHTML = '<option value="">- 선택 -</option>';
+  
+  if(!baseVal) return;
+  const t1List = [...new Set(ENCHANT_TREE.filter(e => e.base === baseVal).map(e => e.t1))];
+  t1List.forEach(t1 => {
+    t1Select.innerHTML += `<option value="${t1}">${t1}</option>`;
+  });
+}
+
+function updateT2Dropdown() {
+  const t1Val = document.getElementById('cb-enchant-t1').value;
+  const t2Select = document.getElementById('cb-enchant-t2');
+  t2Select.innerHTML = '<option value="">- 선택 -</option>';
+  
+  if(!t1Val) return;
+  const matchTrees = ENCHANT_TREE.filter(e => e.t1 === t1Val);
+  let t2List = [];
+  matchTrees.forEach(m => {
+    if(m.t2) t2List = t2List.concat(m.t2);
+  });
+  t2List = [...new Set(t2List)];
+  
+  t2List.forEach(t2 => {
+    t2Select.innerHTML += `<option value="${t2}">${t2}</option>`;
+  });
 }
 
 function escapeHtml(unsafe) {
@@ -1575,8 +1638,19 @@ function fetchCommunityBuilds() {
       const dateStr = data.created_at ? new Date(data.created_at.toDate()).toLocaleString('ko-KR') : '';
       
       let tagsHtml = '';
-      if(data.weapon) tagsHtml += `<span class="build-tag weapon">⚔ ${escapeHtml(data.weapon)}</span>`;
-      if(data.enchant) tagsHtml += `<span class="build-tag enchant">🔨 ${escapeHtml(data.enchant)}</span>`;
+      
+      let weaponDisplay = '';
+      if(data.enchant_base) {
+        weaponDisplay += escapeHtml(data.enchant_base);
+        if(data.enchant_t1) weaponDisplay += ` > ${escapeHtml(data.enchant_t1)}`;
+        if(data.enchant_t2) weaponDisplay += ` > ${escapeHtml(data.enchant_t2)}`;
+      } else if(data.weapon || data.enchant) {
+        if(data.weapon) weaponDisplay += escapeHtml(data.weapon);
+        if(data.enchant) weaponDisplay += (weaponDisplay ? ` > ` : '') + escapeHtml(data.enchant);
+      }
+      
+      if(weaponDisplay) tagsHtml += `<span class="build-tag weapon">⚔ ${weaponDisplay}</span>`;
+      
       if(data.costume) tagsHtml += `<span class="build-tag costume">🐇 ${escapeHtml(data.costume)}</span>`;
       if(data.combo) tagsHtml += `<span class="build-tag combo">🔮 ${escapeHtml(data.combo)}</span>`;
       
@@ -1608,16 +1682,17 @@ function fetchCommunityBuilds() {
 function submitBuild() {
   const btn = document.getElementById('cb-submit-btn');
   const author = document.getElementById('cb-author').value.trim();
-  const weapon = document.getElementById('cb-weapon').value.trim();
-  const enchant = document.getElementById('cb-enchant').value.trim();
+  const enchant_base = document.getElementById('cb-enchant-base').value.trim();
+  const enchant_t1 = document.getElementById('cb-enchant-t1').value.trim();
+  const enchant_t2 = document.getElementById('cb-enchant-t2').value.trim();
   const costume = document.getElementById('cb-costume').value.trim();
   const fruit = document.getElementById('cb-fruit').value.trim();
   const combo = document.getElementById('cb-combo').value.trim();
   const artifact = document.getElementById('cb-artifact').value.trim();
   const desc = document.getElementById('cb-desc').value.trim();
   
-  if(!weapon && !enchant && !costume && !combo) {
-    alert('최소한 무기, 강화, 코스튬, 콤보 중 하나는 입력해주세요!');
+  if(!enchant_base && !costume && !combo) {
+    alert('최소한 베이스 무기, 코스튬, 콤보 중 하나는 입력해주세요!');
     return;
   }
   
@@ -1626,14 +1701,14 @@ function submitBuild() {
   
   db.collection('builds').add({
     author: author || '익명의 룬',
-    weapon, enchant, costume, fruit, combo, artifact, desc,
+    enchant_base, enchant_t1, enchant_t2, costume, fruit, combo, artifact, desc,
     created_at: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => {
     alert('빌드가 성공적으로 등록되었습니다!');
     toggleBuildForm();
     document.getElementById('cb-author').value = '';
-    document.getElementById('cb-weapon').value = '';
-    document.getElementById('cb-enchant').value = '';
+    document.getElementById('cb-enchant-base').value = '';
+    updateT1Dropdown();
     document.getElementById('cb-costume').value = '';
     document.getElementById('cb-fruit').value = '';
     document.getElementById('cb-combo').value = '';
@@ -1658,6 +1733,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  const cbBase = document.getElementById('cb-enchant-base');
+  if(cbBase) {
+    const bases = [...new Set(ENCHANT_TREE.map(e => e.base))];
+    bases.forEach(b => {
+      cbBase.innerHTML += `<option value="${b}">${b}</option>`;
+    });
+  }
+
+  const cbCostume = document.getElementById('cb-costume');
+  if(cbCostume) {
+    COSTUMES.forEach(c => {
+      cbCostume.innerHTML += `<option value="${c[0]}">${c[0]}</option>`;
+    });
+  }
 });
 </script>
 </body>
