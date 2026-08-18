@@ -5,6 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>세피리아 뽑기대 — 랜덤 빌드 생성기</title>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAZxYru-L3RZ-BOCDbay2uygWUQe0kfXYs",
+    authDomain: "sephiria-randomizer.firebaseapp.com",
+    projectId: "sephiria-randomizer",
+    storageBucket: "sephiria-randomizer.firebasestorage.app",
+    messagingSenderId: "423025870971",
+    appId: "1:423025870971:web:1aa596af5a442ab827fade",
+    measurementId: "G-43QR94CSDZ"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
 <style>
 @font-face{
   font-family:'Galmuri7';
@@ -527,6 +544,34 @@
     .rolling{animation:none;}
     .panel.active{animation:none;}
   }
+
+  /* COMMUNITY BOARD STYLES */
+  .community-list { display:flex; flex-direction:column; gap:16px; margin-top:20px; }
+  .build-card { background:var(--card-bg); border:2px solid var(--border); border-radius:4px; padding:16px; position:relative; box-shadow:0 4px 0 rgba(0,0,0,0.4); }
+  .build-card-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; border-bottom:1px solid var(--border-light); padding-bottom:8px; }
+  .build-card-title { font-size:16px; color:var(--text); margin:0; font-weight:normal; }
+  .build-card-author { font-size:12px; color:var(--accent); }
+  .build-card-date { font-size:10px; color:var(--muted-dim); }
+  .build-card-body { font-size:13px; line-height:1.6; color:var(--text-dim); margin-bottom:12px; }
+  .build-card-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .build-tag { background:var(--bg); border:1px solid var(--border-light); padding:4px 8px; border-radius:2px; font-size:11px; color:var(--text-dim); }
+  .build-tag.weapon { color:#ff8a65; border-color:rgba(255,138,101,0.3); }
+  .build-tag.enchant { color:#ffd54f; border-color:rgba(255,213,79,0.3); }
+  .build-tag.costume { color:#ba68c8; border-color:rgba(186,104,200,0.3); }
+  .build-tag.combo { color:#4fc3f7; border-color:rgba(79,195,247,0.3); }
+  .build-form { background:var(--card-bg); border:2px solid var(--border); border-radius:4px; padding:16px; margin-bottom:24px; box-shadow:0 4px 0 rgba(0,0,0,0.4); }
+  .build-form-title { font-size:16px; color:var(--text); margin:0 0 16px 0; border-bottom:1px solid var(--border-light); padding-bottom:8px; text-align:center; }
+  .form-group { margin-bottom:12px; }
+  .form-group label { display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .form-group input, .form-group textarea, .form-group select { width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:8px; font-family:'Galmuri7', sans-serif; font-size:13px; border-radius:2px; }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none; border-color:var(--accent); }
+  .form-row { display:flex; gap:12px; }
+  .form-row .form-group { flex:1; }
+  .submit-btn { width:100%; padding:12px; margin-top:8px; background:var(--accent); color:#121212; border:2px solid #000; font-family:'Galmuri7', sans-serif; font-size:15px; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,0.3); border-radius:4px; transition:transform 0.1s, box-shadow 0.1s; }
+  .submit-btn:active { transform:translateY(4px); box-shadow:0 0 0 rgba(0,0,0,0); }
+  .submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:0 4px 0 rgba(0,0,0,0.3); }
+  .load-current-btn { background:var(--bg); color:var(--text); border:1px dashed var(--border-light); font-family:'Galmuri7', sans-serif; padding:8px 12px; font-size:12px; cursor:pointer; width:100%; margin-bottom:16px; border-radius:2px; transition:all 0.2s; }
+  .load-current-btn:hover { border-color:var(--accent); color:var(--accent); }
 </style>
 </head>
 <body>
@@ -546,6 +591,7 @@
     <button class="tab" data-tab="combo">🔮 콤보</button>
     <button class="tab" data-tab="build">🎲 풀 빌드</button>
     <button class="tab" data-tab="custom">🎯 커스텀 뽑기</button>
+    <button class="tab" data-tab="community">📜 빌드 게시판</button>
   </div>
 
   <!-- WEAPON -->
@@ -639,6 +685,67 @@
       </div>
     </div>
     <div class="btn-row"><button class="roll-btn" onclick="rollCustom()">3개 뽑고 고르기</button></div>
+  </section>
+
+  <!-- COMMUNITY BOARD -->
+  <section class="panel" id="panel-community">
+    <p class="desc">자신만의 독특한 빌드를 공유하거나 다른 사람의 빌드를 구경해보세요.</p>
+    
+    <button class="load-current-btn" onclick="loadCurrentRollToForm()">⬇ 현재 뽑기 결과(풀 빌드) 불러오기</button>
+    
+    <div class="build-form" id="build-submit-form" style="display:none;">
+      <h3 class="build-form-title">새 빌드 등록</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>닉네임</label>
+          <input type="text" id="cb-author" placeholder="빌더 이름 (최대 10자)" maxlength="10">
+        </div>
+        <div class="form-group">
+          <label>무기</label>
+          <input type="text" id="cb-weapon" placeholder="무기 이름">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>무기 강화 (베이스 / T1 / T2)</label>
+        <input type="text" id="cb-enchant" placeholder="예: 단검 / 맹독 단검 / 암살자의 단검">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>코스튬</label>
+          <input type="text" id="cb-costume" placeholder="코스튬 이름">
+        </div>
+        <div class="form-group">
+          <label>과일 꼬치</label>
+          <input type="text" id="cb-fruit" placeholder="예: 바나나-딸기-키위">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>콤보</label>
+          <input type="text" id="cb-combo" placeholder="사용 콤보">
+        </div>
+        <div class="form-group">
+          <label>핵심 아티팩트</label>
+          <input type="text" id="cb-artifact" placeholder="주요 아티팩트">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>빌드 설명 및 팁</label>
+        <textarea id="cb-desc" rows="3" placeholder="운영 방법이나 장단점을 자유롭게 적어주세요."></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="submit-btn" id="cb-submit-btn" onclick="submitBuild()">등록하기</button>
+        <button class="load-current-btn" onclick="toggleBuildForm()" style="margin:8px 0 0 0; border-style:solid; background:transparent;">취소</button>
+      </div>
+    </div>
+    
+    <div class="btn-row" id="build-form-toggle-wrap">
+      <button class="roll-btn" style="background:var(--card-bg); border-color:var(--border-light);" onclick="toggleBuildForm()">+ 새 빌드 공유하기</button>
+    </div>
+
+    <div class="community-list" id="community-list">
+      <p class="placeholder" style="text-align:center; padding:30px;">빌드를 불러오는 중입니다...</p>
+    </div>
   </section>
 
   <footer>
@@ -1410,6 +1517,148 @@ function roll(key){
     btn.disabled = false;
   });
 }
+
+// --- COMMUNITY BOARD LOGIC ---
+let communityLoaded = false;
+
+function toggleBuildForm() {
+  const form = document.getElementById('build-submit-form');
+  const btnWrap = document.getElementById('build-form-toggle-wrap');
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    btnWrap.style.display = 'none';
+  } else {
+    form.style.display = 'none';
+    btnWrap.style.display = 'block';
+  }
+}
+
+function loadCurrentRollToForm() {
+  const buildCard = document.getElementById('card-build');
+  if (buildCard && !buildCard.querySelector('.placeholder')) {
+    const titles = buildCard.querySelectorAll('.history b');
+    const bTexts = Array.from(titles).map(b => b.innerText);
+    if(bTexts.length >= 3) {
+      document.getElementById('cb-weapon').value = bTexts[0] || '';
+      document.getElementById('cb-enchant').value = bTexts[1] || '';
+      document.getElementById('cb-costume').value = bTexts[2] || '';
+      if(bTexts.length > 3) {
+        document.getElementById('cb-combo').value = bTexts.slice(3).join(', ');
+      }
+    }
+    toggleBuildForm();
+    document.getElementById('build-submit-form').style.display = 'block';
+    document.getElementById('build-form-toggle-wrap').style.display = 'none';
+  } else {
+    alert('먼저 [풀 빌드] 탭에서 빌드를 뽑아주세요!');
+  }
+}
+
+function escapeHtml(unsafe) {
+  return (unsafe || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function fetchCommunityBuilds() {
+  if(!db) return;
+  const listEl = document.getElementById('community-list');
+  listEl.innerHTML = '<p class="placeholder" style="text-align:center;">불러오는 중...</p>';
+  
+  db.collection('builds').orderBy('created_at', 'desc').limit(50).get().then(snapshot => {
+    listEl.innerHTML = '';
+    if(snapshot.empty) {
+      listEl.innerHTML = '<p class="placeholder" style="text-align:center;">아직 등록된 빌드가 없습니다. 첫 빌드를 등록해보세요!</p>';
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const dateStr = data.created_at ? new Date(data.created_at.toDate()).toLocaleString('ko-KR') : '';
+      
+      let tagsHtml = '';
+      if(data.weapon) tagsHtml += `<span class="build-tag weapon">⚔ ${escapeHtml(data.weapon)}</span>`;
+      if(data.enchant) tagsHtml += `<span class="build-tag enchant">🔨 ${escapeHtml(data.enchant)}</span>`;
+      if(data.costume) tagsHtml += `<span class="build-tag costume">🐇 ${escapeHtml(data.costume)}</span>`;
+      if(data.combo) tagsHtml += `<span class="build-tag combo">🔮 ${escapeHtml(data.combo)}</span>`;
+      
+      let extraHtml = '';
+      if(data.fruit) extraHtml += `<div style="margin-bottom:4px;"><b style="color:var(--text);">과일 꼬치:</b> ${escapeHtml(data.fruit)}</div>`;
+      if(data.artifact) extraHtml += `<div><b style="color:var(--text);">핵심 아티팩트:</b> ${escapeHtml(data.artifact)}</div>`;
+      
+      const cardHtml = `
+        <div class="build-card">
+          <div class="build-card-header">
+            <h4 class="build-card-title">${escapeHtml(data.author || '익명의 룬')}의 빌드</h4>
+            <span class="build-card-date">${dateStr}</span>
+          </div>
+          <div class="build-card-tags">
+            ${tagsHtml}
+          </div>
+          ${extraHtml ? `<div class="build-card-body">${extraHtml}</div>` : ''}
+          ${data.desc ? `<div class="build-card-body" style="background:var(--bg); padding:10px; border-radius:2px; border-left:3px solid var(--accent); margin-top:8px;">${escapeHtml(data.desc)}</div>` : ''}
+        </div>
+      `;
+      listEl.innerHTML += cardHtml;
+    });
+  }).catch(err => {
+    console.error('Error fetching builds:', err);
+    listEl.innerHTML = '<p class="placeholder" style="text-align:center;color:#ef5350;">게시판을 불러오는데 실패했습니다.</p>';
+  });
+}
+
+function submitBuild() {
+  const btn = document.getElementById('cb-submit-btn');
+  const author = document.getElementById('cb-author').value.trim();
+  const weapon = document.getElementById('cb-weapon').value.trim();
+  const enchant = document.getElementById('cb-enchant').value.trim();
+  const costume = document.getElementById('cb-costume').value.trim();
+  const fruit = document.getElementById('cb-fruit').value.trim();
+  const combo = document.getElementById('cb-combo').value.trim();
+  const artifact = document.getElementById('cb-artifact').value.trim();
+  const desc = document.getElementById('cb-desc').value.trim();
+  
+  if(!weapon && !enchant && !costume && !combo) {
+    alert('최소한 무기, 강화, 코스튬, 콤보 중 하나는 입력해주세요!');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.innerText = '등록 중...';
+  
+  db.collection('builds').add({
+    author: author || '익명의 룬',
+    weapon, enchant, costume, fruit, combo, artifact, desc,
+    created_at: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(() => {
+    alert('빌드가 성공적으로 등록되었습니다!');
+    toggleBuildForm();
+    document.getElementById('cb-author').value = '';
+    document.getElementById('cb-weapon').value = '';
+    document.getElementById('cb-enchant').value = '';
+    document.getElementById('cb-costume').value = '';
+    document.getElementById('cb-fruit').value = '';
+    document.getElementById('cb-combo').value = '';
+    document.getElementById('cb-artifact').value = '';
+    document.getElementById('cb-desc').value = '';
+    fetchCommunityBuilds();
+  }).catch(err => {
+    console.error('Error adding document: ', err);
+    alert('등록에 실패했습니다.');
+  }).finally(() => {
+    btn.disabled = false;
+    btn.innerText = '등록하기';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      if(e.target.dataset.tab === 'community' && !communityLoaded) {
+        communityLoaded = true;
+        fetchCommunityBuilds();
+      }
+    });
+  });
+});
 </script>
 </body>
 </html>
