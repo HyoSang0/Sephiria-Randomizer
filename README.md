@@ -85,6 +85,46 @@ hotfix/1 ───────────────────────�
 2. **릴리즈** — `develop`에서 `release/버전` 분기 → QA/수정 → `main`과 `develop` 양쪽에 머지 + 태그
 3. **긴급 수정** — `main`에서 `hotfix/버그명` 분기 → 수정 → `main`과 `develop` 양쪽에 머지
 
+## 🔥 Firebase 데이터베이스 정보
+
+이 프로젝트는 사용자 간 빌드 기록 및 커뮤니티 공유 기능을 위해 **Firebase Cloud Firestore**를 사용합니다.
+
+### 1. 컬렉션 구조 (`builds`)
+
+빌드 정보는 `builds` 컬렉션(Collection)에 개별 문서(Document)로 저장됩니다.
+
+| 필드명 | 타입 | 설명 |
+|---|---|---|
+| `nickname` | `string` | 작성자 닉네임 (최대 20자) |
+| `enchant_base` | `string` | 무기 베이스 (예: `표준 검과 방패`) |
+| `enchant_t1` | `string` | 1차 강화 T1 (예: `솜털의 보호`) |
+| `enchant_t2` | `string` | 2차 강화 T2 (예: `별의 반짝임`) |
+| `costume` | `string` | 선택한 코스튬 이름 |
+| `fruit_skewer` | `string` | 과일 꼬치 정보 |
+| `combos` | `array(string)` | 콤보 태그 목록 |
+| `artifact` | `string` | 핵심 아티팩트 정보 |
+| `description` | `string` | 빌드 설명 및 공유 팁 |
+| `created_at` | `timestamp` | 작성일시 (`serverTimestamp()`) |
+
+### 2. Firestore 보안 규칙 (Security Rules)
+
+데이터 훼손 방지 및 읽기/쓰기 권한 제어를 위해 아래의 보안 규칙이 적용되어 있습니다.
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /builds/{document} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['nickname', 'description'])
+                    && request.resource.data.nickname is string
+                    && request.resource.data.nickname.size() <= 20;
+      allow update, delete: if false;
+    }
+  }
+}
+```
+
 ## 📄 라이선스
 
 이 프로젝트는 개인 프로젝트입니다.  
