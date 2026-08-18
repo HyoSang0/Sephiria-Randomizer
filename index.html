@@ -572,6 +572,19 @@
   .submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:0 4px 0 rgba(0,0,0,0.3); }
   .load-current-btn { background:var(--bg); color:var(--text); border:1px dashed var(--border-light); font-family:'Galmuri7', sans-serif; padding:8px 12px; font-size:12px; cursor:pointer; width:100%; margin-bottom:16px; border-radius:2px; transition:all 0.2s; }
   .load-current-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* Custom Select Styles */
+  .custom-select-wrapper { position: relative; user-select: none; width: 100%; }
+  .custom-select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px; font-family: 'Galmuri7', sans-serif; font-size: 13px; border-radius: 2px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; height: 42px; box-sizing: border-box; }
+  .custom-select:hover { border-color: var(--accent); }
+  .custom-select-options { position: absolute; top: 100%; left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); z-index: 100; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+  .custom-select-options.open { display: block; }
+  .custom-select-option { padding: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-bottom: 1px solid var(--border-light); }
+  .custom-select-option:last-child { border-bottom: none; }
+  .custom-select-option:hover { background: var(--bg); color: var(--accent); }
+  .custom-select-option img { width: 24px; height: 24px; object-fit: contain; }
+  .custom-select-selected { display: flex; align-items: center; gap: 8px; }
+  .custom-select-selected img { width: 24px; height: 24px; object-fit: contain; }
 </style>
 </head>
 <body>
@@ -702,9 +715,16 @@
         </div>
         <div class="form-group">
           <label>베이스 무기</label>
-          <select id="cb-enchant-base" onchange="updateT1Dropdown()">
-            <option value="">- 선택 -</option>
-          </select>
+          <div class="custom-select-wrapper" id="cb-enchant-base-wrapper">
+            <div class="custom-select" id="cb-enchant-base-display" onclick="toggleCustomSelect('cb-enchant-base-options')">
+              <div class="custom-select-selected">- 선택 -</div>
+              <div>▼</div>
+            </div>
+            <div class="custom-select-options" id="cb-enchant-base-options">
+              <!-- JS will populate options -->
+            </div>
+          </div>
+          <input type="hidden" id="cb-enchant-base" onchange="updateT1Dropdown()">
         </div>
       </div>
       <div class="form-row">
@@ -724,9 +744,16 @@
       <div class="form-row">
         <div class="form-group">
           <label>코스튬</label>
-          <select id="cb-costume">
-            <option value="">- 선택 -</option>
-          </select>
+          <div class="custom-select-wrapper" id="cb-costume-wrapper">
+            <div class="custom-select" id="cb-costume-display" onclick="toggleCustomSelect('cb-costume-options')">
+              <div class="custom-select-selected">- 선택 -</div>
+              <div>▼</div>
+            </div>
+            <div class="custom-select-options" id="cb-costume-options">
+              <!-- JS will populate options -->
+            </div>
+          </div>
+          <input type="hidden" id="cb-costume">
         </div>
         <div class="form-group">
           <label>과일 꼬치</label>
@@ -1562,16 +1589,22 @@ function loadCurrentRollToForm() {
         t2Val = matchTree.t2 && matchTree.t2.includes(enchantTxt) ? enchantTxt : '';
       }
       
-      const cbBase = document.getElementById('cb-enchant-base');
-      cbBase.value = baseVal;
-      updateT1Dropdown();
+      const wOpt = WEAPON_TYPES.find(w => w.name === baseVal);
+      const baseImg = wOpt ? weaponImageHTML(wOpt) : '';
+      const baseDisplay = baseVal ? `${baseImg} <span>${baseVal}</span>` : '';
+      setCustomSelectValue('cb-enchant-base', baseVal, baseDisplay);
+      
       const cbT1 = document.getElementById('cb-enchant-t1');
       cbT1.value = t1Val;
       updateT2Dropdown();
       const cbT2 = document.getElementById('cb-enchant-t2');
       cbT2.value = t2Val;
 
-      document.getElementById('cb-costume').value = bTexts[2] || '';
+      const costumeVal = bTexts[2] || '';
+      const cOpt = COSTUMES.find(c => c[0] === costumeVal);
+      const costumeImg = cOpt ? characterImageHTML(cOpt) : '';
+      const costumeDisplay = costumeVal ? `${costumeImg} <span>${costumeVal}</span>` : '';
+      setCustomSelectValue('cb-costume', costumeVal, costumeDisplay);
       
       if(bTexts.length > 3) {
         document.getElementById('cb-combo').value = bTexts.slice(3).join(', ');
@@ -1724,6 +1757,35 @@ function submitBuild() {
   });
 }
 
+function setCustomSelectValue(id, value, displayHtml) {
+  const input = document.getElementById(id);
+  if(!input) return;
+  input.value = value;
+  const display = document.getElementById(id + '-display').querySelector('.custom-select-selected');
+  if (display) {
+    display.innerHTML = displayHtml || (value ? `<span>${value}</span>` : '- 선택 -');
+  }
+  if (input.onchange) {
+    input.onchange();
+  }
+}
+
+function toggleCustomSelect(optionsId) {
+  const options = document.getElementById(optionsId);
+  if (options && options.classList.contains('open')) {
+    options.classList.remove('open');
+  } else if (options) {
+    document.querySelectorAll('.custom-select-options.open').forEach(el => el.classList.remove('open'));
+    options.classList.add('open');
+  }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.custom-select-wrapper')) {
+    document.querySelectorAll('.custom-select-options.open').forEach(el => el.classList.remove('open'));
+  }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -1734,18 +1796,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const cbBase = document.getElementById('cb-enchant-base');
-  if(cbBase) {
+  const cbBaseOpts = document.getElementById('cb-enchant-base-options');
+  if(cbBaseOpts) {
     const bases = [...new Set(ENCHANT_TREE.map(e => e.base))];
+    
+    const defaultOpt = document.createElement('div');
+    defaultOpt.className = 'custom-select-option';
+    defaultOpt.innerHTML = '- 선택 -';
+    defaultOpt.onclick = () => { setCustomSelectValue('cb-enchant-base', '', ''); toggleCustomSelect('cb-enchant-base-options'); };
+    cbBaseOpts.appendChild(defaultOpt);
+
     bases.forEach(b => {
-      cbBase.innerHTML += `<option value="${b}">${b}</option>`;
+      const wOpt = WEAPON_TYPES.find(w => w.name === b);
+      const imgHtml = wOpt ? weaponImageHTML(wOpt) : '';
+      const displayHtml = `${imgHtml} <span>${b}</span>`;
+      
+      const opt = document.createElement('div');
+      opt.className = 'custom-select-option';
+      opt.innerHTML = displayHtml;
+      opt.onclick = () => { setCustomSelectValue('cb-enchant-base', b, displayHtml); toggleCustomSelect('cb-enchant-base-options'); };
+      cbBaseOpts.appendChild(opt);
     });
   }
 
-  const cbCostume = document.getElementById('cb-costume');
-  if(cbCostume) {
+  const cbCostumeOpts = document.getElementById('cb-costume-options');
+  if(cbCostumeOpts) {
+    const defaultOpt = document.createElement('div');
+    defaultOpt.className = 'custom-select-option';
+    defaultOpt.innerHTML = '- 선택 -';
+    defaultOpt.onclick = () => { setCustomSelectValue('cb-costume', '', ''); toggleCustomSelect('cb-costume-options'); };
+    cbCostumeOpts.appendChild(defaultOpt);
+
     COSTUMES.forEach(c => {
-      cbCostume.innerHTML += `<option value="${c[0]}">${c[0]}</option>`;
+      const cOpt = c[0];
+      const imgHtml = characterImageHTML(c);
+      const displayHtml = `${imgHtml} <span>${cOpt}</span>`;
+      
+      const opt = document.createElement('div');
+      opt.className = 'custom-select-option';
+      opt.innerHTML = displayHtml;
+      opt.onclick = () => { setCustomSelectValue('cb-costume', cOpt, displayHtml); toggleCustomSelect('cb-costume-options'); };
+      cbCostumeOpts.appendChild(opt);
     });
   }
 });
