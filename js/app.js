@@ -5,22 +5,30 @@ let WEAPON_TYPES,
     COMBOS,
     ENCHANT_TREE,
     ENCHANT_DETAILS,
-    WEAPON_ENCHANT_MAP;
+    WEAPON_ENCHANT_MAP,
+    WEAPON_ASSET_FILES = new Map(),
+    COSTUME_ASSET_FILES = new Map();
 async function loadGameData() {
     const files = await Promise.all([
         fetch("./data/weapons.json"),
         fetch("./data/costumes.json"),
         fetch("./data/characters.json"),
         fetch("./data/combos.json"),
-        fetch("./data/enchantments.json")
+        fetch("./data/enchantments.json"),
+        fetch("./data/weapon_index.csv"),
+        fetch("./data/costume_index.csv"),
     ]);
 
     if (files.some(response => !response.ok)) {
         throw new Error("게임 데이터를 불러오지 못했습니다.");
     }
 
-    const [weapons, costumes, characters, combos, enchantments] =
-        await Promise.all(files.map(response => response.json()));
+    const [weapons, costumes, characters, combos, enchantments, weaponIndex, costumeIndex] =
+        await Promise.all([
+            ...files.slice(0, 5).map((response) => response.json()),
+            files[5].text(),
+            files[6].text(),
+        ]);
 
     WEAPON_TYPES = weapons;
     COSTUMES = costumes;
@@ -30,6 +38,19 @@ async function loadGameData() {
     ENCHANT_TREE = enchantments.tree;
     ENCHANT_DETAILS = enchantments.details;
     WEAPON_ENCHANT_MAP = enchantments.weaponMap;
+    WEAPON_ASSET_FILES = new Map();
+    hofCsvParse(weaponIndex).forEach((row) => {
+        if (!row.file) return;
+        [row.file, row.name_en, row.name_ko].forEach((key) => {
+            if (key) WEAPON_ASSET_FILES.set(key.trim().toLowerCase(), row.file);
+        });
+    });
+    COSTUME_ASSET_FILES = new Map();
+    hofCsvParse(costumeIndex).forEach((row) => {
+        if (row.file && row.name_ko && !COSTUME_ASSET_FILES.has(row.name_ko.trim().toLowerCase())) {
+            COSTUME_ASSET_FILES.set(row.name_ko.trim().toLowerCase(), row.file);
+        }
+    });
 }
 /* ================= STATE ================= */
 let comboCount = 1;
@@ -90,16 +111,14 @@ function assetImageHTML(urls, alt, detail = false, imageClass = "") {
     const classes = `result-image${imageClass ? ` ${imageClass}` : ""}`;
     return `<div class="${detail ? "detail-visual" : "result-visual"}"><div class="result-image-wrap"><img class="${classes}" src="${escapeAttr(clean[0])}" alt="${escapeAttr(alt)}" loading="lazy" decoding="async" data-fallbacks="${escapeAttr(fallback)}" onerror="imageFallback(this)"></div></div>`;
 }
-function weaponImageURLs(slug) {
-    if (!slug) return [];
-    const extensions = WEBP_FIRST_WEAPON_SLUGS.has(slug)
-        ? WEBP_FIRST_IMAGE_EXTENSIONS
-        : PNG_FIRST_IMAGE_EXTENSIONS;
-    return extensions.map((ext) => `${WEAPON_IMAGE_BASE}/${slug}.${ext}`);
+function weaponImageURLs(key, name = "") {
+    const file = WEAPON_ASSET_FILES.get(String(key || "").trim().toLowerCase())
+        || WEAPON_ASSET_FILES.get(String(name || "").trim().toLowerCase());
+    return file ? [`${WEAPON_IMAGE_BASE}/${encodeURIComponent(file)}.png`] : [];
 }
 function weaponImageHTML(w, detail = false) {
     return assetImageHTML(
-        weaponImageURLs(w.imageKey),
+        weaponImageURLs(w.imageKey, w.en || w.name),
         `${w.en || w.name} weapon`,
         detail,
     );
@@ -107,8 +126,10 @@ function weaponImageHTML(w, detail = false) {
 function characterImageHTML(c, detail = false) {
     const a = CHARACTER_ASSETS[c[0]];
     if (!a) return "";
+    const file = COSTUME_ASSET_FILES.get(String(c[0]).trim().toLowerCase());
+    if (!file) return "";
     return assetImageHTML(
-        [`${CHARACTER_IMAGE_BASE}/character-${a.slug}.png`],
+        [`${CHARACTER_IMAGE_BASE}/${encodeURIComponent(file)}.png`],
         `${a.en} character`,
         detail,
         "costume-image",
@@ -116,7 +137,7 @@ function characterImageHTML(c, detail = false) {
 }
 function enchantImageHTML(name, detail = false) {
     return assetImageHTML(
-        weaponImageURLs(ENCHANT_IMAGE_KEYS[name]),
+        weaponImageURLs(ENCHANT_IMAGE_KEYS[name], name),
         `${name} weapon evolution`,
         detail,
     );
@@ -638,7 +659,7 @@ function hofCsvParse(text) {
     return rows.slice(1).map((values) => Object.fromEntries(headers.map((h, i) => [h, (values[i] || "").trim()])));
 }
 
-// 카테고리별로 이미지가 있는 서브폴더 구조가 달라서 (Icons/1x 있는 것 vs 바로 1x인 것) 따로 매핑
+// 로컬 CSV의 file 이름과 bundled assets 경로를 사용한다.
 function hofImageUrl(kind, file, framed) {
     if (!file) return "";
     const folder = HOF_CSV_SOURCES[kind].folder;
