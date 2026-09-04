@@ -581,4 +581,561 @@ function roll(key) {
 
 document.addEventListener("DOMContentLoaded", async () => {
     await loadGameData();
+    renderHofList();
+    ["costume", "weapon", "miracle"].forEach(renderHofSlotButton);
+    renderHofComboChips();
+    for (let i = 0; i < 4; i++) addHofInventoryRow();
 });
+
+/* ================= HALL OF FAME (명예의 전당) ================= */
+const HOF_COLLECTION = "hall_of_fame";
+const HOF_COLS = 6; // 인게임 인벤토리 가로 칸 수에 맞춤
+const HOF_ASSET_BASE = "https://raw.githubusercontent.com/gjanwjstk/sephiria-fan-kit/main/";
+let hofGridRows = 0;
+let hofScreenshotDataUrl = null;
+let hofScreenshotImage = null; // 인식(OCR/색상 분석)에 쓰는 Image 객체
+
+// 선택된 코스튬/무기/기적(단일) + 콤보(다중) 데이터를 들고 있음. 각 항목은 hofPickerData의 item 객체.
+let hofSelected = { costume: null, weapon: null, miracle: null, combos: [] };
+
+/* -- Fan Kit 데이터 로딩 -- */
+const HOF_CSV_SOURCES = {
+    artifact: { path: "artifact_index.csv", folder: "Artifacts" },
+    tablet: { path: "tablet_index.csv", folder: "Tablets" },
+    weapon: { path: "weapon_index.csv", folder: "Weapons" },
+    costume: { path: "Costumes/costume_index.csv", folder: "Costumes" },
+    combo: { path: "Categories/category_index.csv", folder: "Categories" },
+    miracle: { path: "Miracles/miracle_index.csv", folder: "Miracles" },
+};
+let hofPickerData = {};
+let hofPickerDataLoaded = false;
+let hofPickerDataLoading = null;
+
+function hofCsvParse(text) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    text = text.replace(/^\uFEFF/, "");
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (ch === '"') {
+            if (quoted && next === '"') { field += '"'; i++; }
+            else quoted = !quoted;
+        } else if (ch === "," && !quoted) { row.push(field); field = ""; }
+        else if ((ch === "\n" || ch === "\r") && !quoted) {
+            if (ch === "\r" && next === "\n") i++;
+            row.push(field); field = "";
+            if (row.some((v) => v.trim())) rows.push(row);
+            row = [];
+        } else field += ch;
+    }
+    row.push(field);
+    if (row.some((v) => v.trim())) rows.push(row);
+    if (!rows.length) return [];
+    const headers = rows[0].map((h) => h.trim());
+    return rows.slice(1).map((values) => Object.fromEntries(headers.map((h, i) => [h, (values[i] || "").trim()])));
+}
+
+// 카테고리별로 이미지가 있는 서브폴더 구조가 달라서 (Icons/1x 있는 것 vs 바로 1x인 것) 따로 매핑
+function hofImageUrl(kind, file, framed) {
+    if (!file) return "";
+    const folder = HOF_CSV_SOURCES[kind].folder;
+    const hasIconsSubfolder = kind === "artifact" || kind === "tablet" || kind === "weapon" || kind === "miracle";
+    if (framed && (kind === "artifact" || kind === "tablet" || kind === "weapon")) {
+        return `${HOF_ASSET_BASE}${folder}/Framed/1x/${encodeURIComponent(file)}.png`;
+    }
+    const sub = hasIconsSubfolder ? "Icons/1x" : "1x";
+    return `${HOF_ASSET_BASE}${folder}/${sub}/${encodeURIComponent(file)}.png`;
+}
+
+async function loadHofPickerData() {
+    if (hofPickerDataLoaded) return;
+    if (hofPickerDataLoading) return hofPickerDataLoading;
+    hofPickerDataLoading = (async () => {
+        const entries = await Promise.all(
+            Object.entries(HOF_CSV_SOURCES).map(async ([kind, { path }]) => {
+                try {
+                    const res = await fetch(HOF_ASSET_BASE + path);
+                    if (!res.ok) throw new Error(`${kind}: ${res.status}`);
+                    const rows = hofCsvParse(await res.text());
+                    const items = rows
+                        .filter((r) => r.file)
+                        .map((r) => ({
+                            kind,
+                            file: r.file,
+                            nameKo: r.name_ko || r.name_en || r.file,
+                            nameEn: r.name_en || r.file,
+                            rarity: r.rarity || "",
+                            categories: r.categories || "",
+                            effectKo: r.effect_ko || "",
+                            effectEn: r.effect_en || "",
+                            icon: hofImageUrl(kind, r.file, false),
+                            framed: hofImageUrl(kind, r.file, true),
+                        }));
+                    return [kind, items];
+                } catch (err) {
+                    console.warn("HOF asset index load failed:", kind, err);
+                    return [kind, []];
+                }
+            }),
+        );
+        hofPickerData = Object.fromEntries(entries);
+        hofPickerDataLoaded = true;
+    })();
+    return hofPickerDataLoading;
+}
+
+/* -- 아이템 선택 모달 -- */
+let hofPickerContext = null; // {mode: 'field', field: 'costume'|'weapon'|'miracle'|'combo'} | {mode:'inventory', target, index}
+let hofPickerKind = "artifact"; // 인벤토리 모드에서만 사용 (아티팩트/석판 전환)
+
+const HOF_FIELD_LABELS = { costume: "코스튬", weapon: "무기", miracle: "기적", combo: "콤보" };
+
+async function openHofFieldPicker(field) {
+    hofPickerContext = { mode: "field", field };
+    document.getElementById("hof-picker-kind-row").style.display = "none";
+    document.getElementById("hof-picker-title").textContent = `${HOF_FIELD_LABELS[field]} 선택`;
+    document.getElementById("hof-picker-search").value = "";
+    document.getElementById("hof-picker-overlay").classList.add("open");
+    await ensureHofPickerReady(field === "combo" ? "combo" : field);
+    renderHofPickerGrid();
+}
+
+async function openHofInventoryPicker(target, index, defaultKind) {
+    hofPickerContext = { mode: "inventory", target, index };
+    hofPickerKind = defaultKind || "artifact";
+    document.getElementById("hof-picker-kind-row").style.display = "flex";
+    updateHofKindButtons();
+    document.getElementById("hof-picker-title").textContent = "인벤토리 아이템 선택";
+    document.getElementById("hof-picker-search").value = "";
+    document.getElementById("hof-picker-overlay").classList.add("open");
+    await ensureHofPickerReady(hofPickerKind);
+    renderHofPickerGrid();
+}
+
+async function ensureHofPickerReady(kind) {
+    const statusEl = document.getElementById("hof-picker-status");
+    statusEl.textContent = "이미지 목록을 불러오는 중...";
+    await loadHofPickerData();
+    statusEl.textContent = (hofPickerData[kind] || []).length ? "" : "목록을 불러오지 못했어요. 인터넷 연결을 확인해주세요.";
+}
+
+function setHofPickerKind(kind) {
+    hofPickerKind = kind;
+    updateHofKindButtons();
+    ensureHofPickerReady(kind).then(renderHofPickerGrid);
+}
+
+function updateHofKindButtons() {
+    document.querySelectorAll(".hof-kind-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.kind === hofPickerKind);
+    });
+}
+
+function closeHofItemPicker() {
+    document.getElementById("hof-picker-overlay").classList.remove("open");
+    hofPickerContext = null;
+}
+
+function renderHofPickerGrid() {
+    if (!hofPickerContext) return;
+    const kind = hofPickerContext.mode === "inventory" ? hofPickerKind : hofPickerContext.field;
+    const list = hofPickerData[kind] || [];
+    const q = document.getElementById("hof-picker-search").value.trim().toLowerCase();
+    const filtered = q
+        ? list.filter((it) => it.nameKo.toLowerCase().includes(q) || it.nameEn.toLowerCase().includes(q))
+        : list;
+    const grid = document.getElementById("hof-picker-grid");
+    if (!filtered.length) {
+        grid.innerHTML = `<p class="placeholder" style="text-align:center; padding:20px; grid-column:1/-1;">검색 결과가 없어요.</p>`;
+        return;
+    }
+    grid.innerHTML = filtered
+        .slice(0, 300)
+        .map(
+            (it, i) => `
+        <button type="button" class="hof-picker-item" onclick="pickHofItem('${kind}', ${filtered === list ? i : list.indexOf(it)})" title="${escapeAttr(it.nameKo)}">
+            <img src="${escapeAttr(it.icon)}" alt="${escapeAttr(it.nameKo)}" loading="lazy" onerror="this.style.opacity=0.15">
+            <span>${escapeHtml(it.nameKo)}</span>
+        </button>`,
+        )
+        .join("");
+}
+
+function pickHofItem(kind, idx) {
+    const item = (hofPickerData[kind] || [])[idx];
+    if (!item || !hofPickerContext) return;
+
+    if (hofPickerContext.mode === "field") {
+        const field = hofPickerContext.field;
+        if (field === "combo") {
+            if (!hofSelected.combos.some((c) => c.file === item.file)) {
+                hofSelected.combos.push(item);
+                renderHofComboChips();
+            }
+            return; // 콤보는 여러 개 고를 수 있으니 모달 유지
+        }
+        hofSelected[field] = item;
+        renderHofSlotButton(field);
+        closeHofItemPicker();
+        return;
+    }
+
+    if (hofPickerContext.mode === "inventory") {
+        const { target, index } = hofPickerContext;
+        setHofCellItem(target, index, item);
+        closeHofItemPicker();
+    }
+}
+
+function renderHofSlotButton(field) {
+    const btn = document.getElementById(`hof-slot-${field}`);
+    const item = hofSelected[field];
+    if (!item) {
+        btn.innerHTML = `<span class="hof-slot-plus">+</span><span class="hof-slot-label">선택</span>`;
+        btn.classList.remove("filled");
+        return;
+    }
+    btn.classList.add("filled");
+    btn.innerHTML = `<img src="${escapeAttr(item.icon)}" alt="${escapeAttr(item.nameKo)}"><span class="hof-slot-label">${escapeHtml(item.nameKo)}</span>`;
+}
+
+function renderHofComboChips() {
+    const wrap = document.getElementById("hof-combo-chips");
+    wrap.innerHTML = hofSelected.combos
+        .map(
+            (c, i) => `
+        <div class="hof-combo-chip">
+            <img src="${escapeAttr(c.icon)}" alt="${escapeAttr(c.nameKo)}">
+            <span>${escapeHtml(c.nameKo)}</span>
+            <button type="button" onclick="removeHofCombo(${i})">✕</button>
+        </div>`,
+        )
+        .join("");
+}
+
+function removeHofCombo(i) {
+    hofSelected.combos.splice(i, 1);
+    renderHofComboChips();
+}
+
+/* -- 인벤토리 그리드 -- */
+function createHofCell(target) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "hof-cell";
+    cell.dataset.target = target;
+    cell.addEventListener("click", () => {
+        const idx = Array.prototype.indexOf.call(cell.parentElement.children, cell);
+        const existingKind = cell.dataset.kind || "artifact";
+        openHofInventoryPicker(target, idx, existingKind);
+    });
+    return cell;
+}
+
+function setHofCellItem(target, index, item) {
+    const selector = "#hof-grid .hof-cell";
+    const cell = document.querySelectorAll(selector)[index];
+    if (!cell) return;
+    cell.dataset.kind = item.kind;
+    cell.dataset.file = item.file;
+    cell.innerHTML = `<img src="${escapeAttr(item.icon)}" alt="${escapeAttr(item.nameKo)}" title="${escapeAttr(item.nameKo)}">`;
+    cell.title = item.effectKo ? `${item.nameKo}\n${item.effectKo}` : item.nameKo;
+}
+
+function addHofInventoryRow() {
+    const grid = document.getElementById("hof-grid");
+    for (let i = 0; i < HOF_COLS; i++) {
+        grid.appendChild(createHofCell("main"));
+    }
+    hofGridRows++;
+}
+
+// 한 줄 추가와 별개로, 칸 하나만 더 필요할 때 쓰는 버튼용 함수.
+// 기존 grid-template-columns가 6열 고정이라 한 칸만 추가해도 레이아웃은 그대로 유지됨.
+function addHofInventoryCell() {
+    const grid = document.getElementById("hof-grid");
+    grid.appendChild(createHofCell("main"));
+}
+
+function handleHofScreenshotUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        hofScreenshotDataUrl = reader.result;
+        const preview = document.getElementById("hof-screenshot-preview");
+        preview.src = hofScreenshotDataUrl;
+        preview.style.display = "block";
+
+        // 인식 기능에서 쓸 Image 객체 준비
+        const img = new Image();
+        img.onload = () => {
+            hofScreenshotImage = img;
+            const btn = document.getElementById("hof-recognize-btn");
+            if (btn) btn.style.display = "block";
+            const status = document.getElementById("hof-recognize-status");
+            if (status) status.textContent = "";
+        };
+        img.src = hofScreenshotDataUrl;
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetHofForm() {
+    ["hof-author", "hof-title", "hof-desc"].forEach((id) => {
+        document.getElementById(id).value = "";
+    });
+    hofSelected = { costume: null, weapon: null, miracle: null, combos: [] };
+    ["costume", "weapon", "miracle"].forEach(renderHofSlotButton);
+    renderHofComboChips();
+    document.getElementById("hof-grid").innerHTML = "";
+    hofGridRows = 0;
+    hofScreenshotDataUrl = null;
+    hofScreenshotImage = null;
+    const preview = document.getElementById("hof-screenshot-preview");
+    preview.src = "";
+    preview.style.display = "none";
+    document.getElementById("hof-screenshot-input").value = "";
+    const btn = document.getElementById("hof-recognize-btn");
+    if (btn) btn.style.display = "none";
+    const status = document.getElementById("hof-recognize-status");
+    if (status) status.textContent = "";
+    for (let i = 0; i < 4; i++) addHofInventoryRow();
+}
+
+/* -- 스크린샷 인식 (베타): 콤보 텍스트 OCR + 인벤토리 칸 점유 여부 감지 --
+   주의: 실제 인게임 스크린샷 표본이 없어서 정확한 크롭 좌표/아이템 이미지 매칭 데이터로
+   학습시키지 못했음. 아래 좌표 비율은 "콤보 효과 패널 = 좌상단, 인벤토리 그리드 = 중앙"
+   형태로 UI 전체를 캡처했다고 가정한 값이라, 실제 스크린샷 프레이밍에 따라 정확도가
+   크게 달라질 수 있음. 콤보는 화면 속 글자를 읽어서 이름을 맞혀보고,
+   인벤토리는 "칸에 뭔가 있는지 없는지"만 색 차이로 추정할 뿐 아이템 이름까지는 읽지 못함.
+*/
+async function recognizeHofScreenshot() {
+    if (!hofScreenshotImage) return;
+    if (typeof Tesseract === "undefined") {
+        alert("인식 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인해주세요.");
+        return;
+    }
+
+    const btn = document.getElementById("hof-recognize-btn");
+    const status = document.getElementById("hof-recognize-status");
+    btn.disabled = true;
+    status.textContent = "🔍 콤보 텍스트를 읽는 중...";
+
+    try {
+        await loadHofPickerData();
+        const img = hofScreenshotImage;
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+
+        // ---- 1) 콤보 효과 패널(좌상단) 텍스트 인식 ----
+        const comboW = w * 0.34;
+        const comboH = h * 0.36;
+        const comboCanvas = document.createElement("canvas");
+        comboCanvas.width = comboW;
+        comboCanvas.height = comboH;
+        comboCanvas.getContext("2d").drawImage(img, 0, 0, comboW, comboH, 0, 0, comboW, comboH);
+
+        const ocrResult = await Tesseract.recognize(comboCanvas.toDataURL(), "kor");
+        const ocrText = (ocrResult.data.text || "").replace(/\s+/g, "");
+
+        const comboList = hofPickerData.combo || [];
+        const matchedCombos = comboList.filter((c) => ocrText.includes(c.nameKo.replace(/\s+/g, "")));
+
+        matchedCombos.forEach((c) => {
+            if (!hofSelected.combos.some((existing) => existing.file === c.file)) {
+                hofSelected.combos.push(c);
+            }
+        });
+        if (matchedCombos.length > 0) renderHofComboChips();
+
+        // ---- 2) 인벤토리 그리드(중앙) 점유 칸 감지 ----
+        status.textContent = "🔍 인벤토리 칸을 분석하는 중...";
+
+        const invX = w * 0.38;
+        const invY = h * 0.08;
+        const invW = w * 0.38;
+        const invH = h * 0.7;
+        const invRows = 4; // 명예의 전당 기본 그리드 행 수와 맞춤
+        const invCols = HOF_COLS;
+
+        const fullCanvas = document.createElement("canvas");
+        fullCanvas.width = w;
+        fullCanvas.height = h;
+        const ctx = fullCanvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        const cellW = invW / invCols;
+        const cellH = invH / invRows;
+        const samples = [];
+        for (let r = 0; r < invRows; r++) {
+            for (let c = 0; c < invCols; c++) {
+                const cx = Math.round(invX + cellW * (c + 0.5));
+                const cy = Math.round(invY + cellH * (r + 0.5));
+                const patch = ctx.getImageData(Math.max(0, cx - 6), Math.max(0, cy - 6), 12, 12).data;
+                let rSum = 0, gSum = 0, bSum = 0, n = 0;
+                for (let i = 0; i < patch.length; i += 4) {
+                    rSum += patch[i];
+                    gSum += patch[i + 1];
+                    bSum += patch[i + 2];
+                    n++;
+                }
+                samples.push([rSum / n, gSum / n, bSum / n]);
+            }
+        }
+
+        // 표본들 중 가장 흔한 색 그룹을 "빈 칸" 기준색으로 추정
+        const baseline = estimateHofBaselineColor(samples);
+        const occupied = samples.map(([r, g, b]) => {
+            const dist = Math.sqrt((r - baseline[0]) ** 2 + (g - baseline[1]) ** 2 + (b - baseline[2]) ** 2);
+            return dist > 22;
+        });
+
+        while (hofGridRows < invRows) addHofInventoryRow();
+        const cells = document.querySelectorAll("#hof-grid .hof-cell");
+        occupied.forEach((isOccupied, idx) => {
+            const cell = cells[idx];
+            if (cell && isOccupied && !cell.dataset.file) {
+                cell.innerHTML = `<span class="hof-cell-guess">❓</span>`;
+                cell.title = "칸이 차 있는 것으로 추정됨 - 눌러서 실제 아이템을 골라주세요";
+            }
+        });
+
+        const occupiedCount = occupied.filter(Boolean).length;
+        status.textContent = `✅ 인식 완료 — 콤보 ${matchedCombos.length}개 인식, 인벤토리 ${occupiedCount}칸 사용 중으로 추정했어요. "❓" 칸은 실제 아이템 이름으로 바꿔주세요.`;
+    } catch (err) {
+        console.error(err);
+        status.textContent = "인식에 실패했어요. 스크린샷을 다시 확인해주세요.";
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// 표본 색상들을 서로 비슷한 것끼리 묶어, 가장 큰 그룹(=가장 흔한 색)의 평균을
+// "빈 칸" 기준색으로 추정한다. 인벤토리는 보통 빈 칸이 더 많다는 가정에 기반함.
+function estimateHofBaselineColor(samples) {
+    const groups = [];
+    samples.forEach((s) => {
+        let matched = false;
+        for (const g of groups) {
+            const dist = Math.sqrt((s[0] - g.avg[0]) ** 2 + (s[1] - g.avg[1]) ** 2 + (s[2] - g.avg[2]) ** 2);
+            if (dist < 14) {
+                g.items.push(s);
+                g.avg = [
+                    g.items.reduce((sum, x) => sum + x[0], 0) / g.items.length,
+                    g.items.reduce((sum, x) => sum + x[1], 0) / g.items.length,
+                    g.items.reduce((sum, x) => sum + x[2], 0) / g.items.length,
+                ];
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) groups.push({ items: [s], avg: s });
+    });
+    groups.sort((a, b) => b.items.length - a.items.length);
+    return groups[0] ? groups[0].avg : [0, 0, 0];
+}
+
+async function submitHofEntry() {
+    const author = document.getElementById("hof-author").value.trim();
+    const title = document.getElementById("hof-title").value.trim();
+    const costume = hofSelected.costume;
+    const weapon = hofSelected.weapon;
+    const miracle = hofSelected.miracle;
+    const combos = hofSelected.combos;
+    const desc = document.getElementById("hof-desc").value.trim();
+
+    if (!author || !weapon) {
+        alert("닉네임과 무기는 최소한 골라주세요!");
+        return;
+    }
+
+    const inventory = [...document.querySelectorAll("#hof-grid .hof-cell")].map((el) =>
+        el.dataset.file
+            ? { kind: el.dataset.kind, file: el.dataset.file, nameKo: el.title.split("\n")[0], icon: el.querySelector("img") ? el.querySelector("img").src : "" }
+            : null,
+    );
+
+    const btn = document.getElementById("hof-submit-btn");
+    btn.disabled = true;
+    btn.textContent = "등록하는 중...";
+
+    try {
+        await db.collection(HOF_COLLECTION).add({
+            author,
+            title,
+            costume: costume ? { file: costume.file, nameKo: costume.nameKo, icon: costume.icon } : null,
+            weapon: weapon ? { file: weapon.file, nameKo: weapon.nameKo, icon: weapon.icon } : null,
+            miracle: miracle ? { file: miracle.file, nameKo: miracle.nameKo, icon: miracle.icon } : null,
+            combos: combos.map((c) => ({ file: c.file, nameKo: c.nameKo, icon: c.icon })),
+            desc,
+            inventory,
+            created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        resetHofForm();
+        renderHofList();
+    } catch (err) {
+        console.error(err);
+        alert("등록에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "명예의 전당에 등록";
+    }
+}
+
+function hofTagHTML(item) {
+    if (!item) return "";
+    if (typeof item === "string") return `<span class="pill">${escapeHofHtml(item)}</span>`;
+    return `<span class="pill hof-pill-img">${item.icon ? `<img src="${escapeHofHtml(item.icon)}" alt="">` : ""}${escapeHofHtml(item.nameKo || item.file || "")}</span>`;
+}
+
+function hofCardHTML(entry) {
+    const inv = entry.inventory || [];
+    const cells = inv
+        .map((item) => {
+            if (!item) return `<div class="hof-card-cell"></div>`;
+            if (typeof item === "string") return `<div class="hof-card-cell">${escapeHofHtml(item)}</div>`;
+            return `<div class="hof-card-cell">${item.icon ? `<img src="${escapeHofHtml(item.icon)}" alt="${escapeHofHtml(item.nameKo || "")}" title="${escapeHofHtml(item.nameKo || "")}">` : escapeHofHtml(item.nameKo || "")}</div>`;
+        })
+        .join("");
+    const tags = [entry.costume, entry.weapon, entry.miracle, ...(entry.combos || (entry.combo ? [entry.combo] : []))]
+        .filter(Boolean)
+        .map(hofTagHTML)
+        .join("");
+    return `
+        <div class="hof-card">
+            <div class="hof-card-header">
+                <div class="hof-card-title">${escapeHofHtml(entry.title || "제목 없음")}</div>
+                <div class="hof-card-author">${escapeHofHtml(entry.author || "익명")}</div>
+            </div>
+            ${tags ? `<div class="hof-card-tags">${tags}</div>` : ""}
+            ${entry.desc ? `<div class="hof-card-body">${escapeHofHtml(entry.desc)}</div>` : ""}
+            ${cells ? `<div class="hof-card-grid">${cells}</div>` : ""}
+        </div>
+    `;
+}
+
+function escapeHofHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+}
+
+function renderHofList() {
+    const listEl = document.getElementById("hof-list");
+    if (!listEl) return;
+    db.collection(HOF_COLLECTION)
+        .orderBy("created_at", "desc")
+        .limit(30)
+        .onSnapshot(
+            (snapshot) => {
+                if (snapshot.empty) {
+                    listEl.innerHTML = `<p class="placeholder" style="text-align: center; padding: 30px;">아직 등록된 빌드가 없어요. 첫 빌드를 남겨보세요!</p>`;
+                    return;
+                }
+                listEl.innerHTML = snapshot.docs.map((doc) => hofCardHTML(doc.data())).join("");
+            },
+            (err) => {
+                console.error(err);
+                listEl.innerHTML = `<p class="placeholder" style="text-align: center; padding: 30px;">명예의 전당을 불러오지 못했어요.</p>`;
+            },
+        );
+}
