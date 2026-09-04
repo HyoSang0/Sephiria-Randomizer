@@ -679,251 +679,566 @@ footer a {
     }
 }
 
-/* COMMUNITY BOARD STYLES */
-.community-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-top: 20px;
+/* ================= HALL OF FAME (명예의 전당) ================= */
+.hof-toggle-btn {
+    width: 100%;
+    font-family: 'Galmuri11', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1c1220;
+    background: linear-gradient(180deg, #ffdfc0, var(--ember) 70%);
+    border: none;
+    padding: 14px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(255, 122, 69, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    margin-bottom: 18px;
 }
-.build-card {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 4px;
-    padding: 16px;
-    position: relative;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+.hof-toggle-btn:hover {
+    transform: translateY(-2px);
 }
-.build-card-header {
+
+.hof-form {
+    background: linear-gradient(180deg, var(--stone2), var(--stone));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 18px;
+    margin-bottom: 24px;
+}
+.hof-form-title {
+    font-family: 'Galmuri14', monospace;
+    font-size: 18px;
+    color: var(--parchment);
+    text-align: center;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--line);
+}
+.hof-row {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
+    gap: 12px;
     margin-bottom: 12px;
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 8px;
+    flex-wrap: wrap;
 }
-.build-card-title {
-    font-size: 16px;
-    color: var(--text);
-    margin: 0;
-    font-weight: normal;
+.hof-field {
+    flex: 1;
+    min-width: 140px;
 }
-.build-card-author {
-    font-size: 12px;
-    color: var(--accent);
+.hof-field label {
+    display: block;
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
 }
-.build-card-date {
+.hof-field input,
+.hof-field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--void);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    padding: 9px 10px;
+    font-family: 'Galmuri9', monospace;
+    font-size: 13px;
+    border-radius: 8px;
+}
+.hof-field input:focus,
+.hof-field textarea:focus {
+    outline: none;
+    border-color: var(--frost);
+}
+.hof-field textarea {
+    resize: vertical;
+    min-height: 52px;
+}
+
+/* 인벤토리 그리드 */
+.hof-inventory-label {
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin: 4px 0 8px;
+}
+.hof-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.hof-cell {
+    width: 100%;
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
+    background: var(--void);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    font-family: 'Galmuri7', monospace;
     font-size: 10px;
+    text-align: center;
+    padding: 2px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.hof-cell:hover {
+    border-color: var(--muted-dim);
+}
+.hof-cell img {
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: pixelated;
+}
+.hof-cell-guess {
+    font-size: 20px;
     color: var(--muted-dim);
 }
-.build-card-body {
-    font-size: 13px;
+.hof-cell:focus {
+    outline: none;
+    border-color: var(--frost);
+}
+.hof-add-row-btn {
+    flex: 1;
+    font-family: 'Galmuri9', monospace;
+    font-size: 12.5px;
+    color: var(--frost);
+    background: rgba(111, 211, 255, 0.08);
+    border: 1px dashed rgba(111, 211, 255, 0.35);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.hof-add-row-btn:hover {
+    background: rgba(111, 211, 255, 0.16);
+}
+.hof-grid-btn-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* 스크린샷 업로드 */
+.hof-screenshot-row {
+    margin-bottom: 16px;
+}
+.hof-screenshot-btn {
+    display: inline-block;
+    font-family: 'Galmuri9', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--stone);
+    border: 1px solid var(--line);
+    padding: 9px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.hof-screenshot-btn:hover {
+    color: var(--parchment);
+    border-color: var(--muted-dim);
+}
+.hof-screenshot-preview {
+    display: none;
+    max-width: 100%;
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+.hof-recognize-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    font-family: 'Galmuri9', monospace;
+    font-size: 12.5px;
+    color: #1c1220;
+    background: linear-gradient(180deg, #b9f4ff, var(--frost) 70%);
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.hof-recognize-btn:hover {
+    filter: brightness(1.08);
+}
+.hof-recognize-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.hof-recognize-status {
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--frost);
+    margin-top: 8px;
+    min-height: 14px;
+}
+.hof-screenshot-note {
+    font-family: 'Galmuri9', monospace;
+    font-size: 11px;
+    color: var(--muted-dim);
+    margin-top: 6px;
     line-height: 1.6;
-    color: var(--text-dim);
+}
+
+.hof-submit-row {
+    display: flex;
+    gap: 10px;
+}
+.hof-submit-btn {
+    flex: 1;
+    font-family: 'Galmuri11', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1c1220;
+    background: linear-gradient(180deg, #ffdfc0, var(--ember) 70%);
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.hof-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.hof-cancel-btn {
+    font-family: 'Galmuri9', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 12px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* 코스튬/무기/기적 이미지 선택 슬롯 */
+.hof-slot-row {
+    align-items: stretch;
+}
+.hof-slot-field {
+    flex: 1;
+    min-width: 100px;
+}
+.hof-slot-field label {
+    display: block;
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.hof-slot-btn {
+    width: 100%;
+    min-height: 68px;
+    box-sizing: border-box;
+    background: var(--void);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+}
+.hof-slot-btn:hover {
+    border-color: var(--frost);
+    color: var(--parchment);
+}
+.hof-slot-btn.filled {
+    border-style: solid;
+    border-color: var(--line);
+}
+.hof-slot-btn img {
+    max-width: 36px;
+    max-height: 36px;
+    image-rendering: pixelated;
+}
+.hof-slot-plus {
+    font-size: 18px;
+    color: var(--muted-dim);
+}
+.hof-slot-label {
+    font-family: 'Galmuri9', monospace;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    word-break: keep-all;
+}
+
+/* 콤보 다중 선택 칩 */
+.hof-combo-field {
+    margin-bottom: 16px;
+}
+.hof-combo-field label {
+    display: block;
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--muted-dim);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.hof-combo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.hof-combo-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--void);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-family: 'Galmuri9', monospace;
+    font-size: 12px;
+    color: var(--parchment);
+}
+.hof-combo-chip img {
+    width: 18px;
+    height: 18px;
+    image-rendering: pixelated;
+}
+.hof-combo-chip button {
+    background: none;
+    border: none;
+    color: var(--muted-dim);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 0 0 4px;
+}
+.hof-combo-chip button:hover {
+    color: var(--ember);
+}
+
+/* 아이템 선택 모달 */
+.hof-picker-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 5, 12, 0.72);
+    backdrop-filter: blur(2px);
+    z-index: 110;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.hof-picker-overlay.open {
+    display: flex;
+}
+.hof-picker {
+    width: 100%;
+    max-width: 560px;
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--stone2), var(--stone));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.hof-picker-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 12px;
 }
-.build-card-tags {
+.hof-picker-head h3 {
+    font-family: 'Galmuri14', monospace;
+    font-size: 16px;
+    color: var(--parchment);
+    margin: 0;
+}
+.hof-picker-close {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--stone);
+    color: var(--muted);
+    font-size: 14px;
+    cursor: pointer;
+}
+.hof-picker-close:hover {
+    color: var(--parchment);
+}
+.hof-picker-kind-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.hof-kind-btn {
+    flex: 1;
+    font-family: 'Galmuri9', monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    background: var(--stone);
+    border: 1px solid var(--line);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.hof-kind-btn.active {
+    color: #1c1220;
+    background: var(--frost);
+    border-color: var(--frost);
+    font-weight: 700;
+}
+.hof-picker-search {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--void);
+    border: 1px solid var(--line);
+    color: var(--parchment);
+    padding: 9px 10px;
+    font-family: 'Galmuri9', monospace;
+    font-size: 13px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+.hof-picker-search:focus {
+    outline: none;
+    border-color: var(--frost);
+}
+.hof-picker-status {
+    font-family: 'Galmuri9', monospace;
+    font-size: 11.5px;
+    color: var(--muted-dim);
+    min-height: 14px;
+    margin-bottom: 4px;
+}
+.hof-picker-grid {
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+    gap: 8px;
+    padding-right: 2px;
+}
+.hof-picker-item {
+    background: var(--void);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--muted);
+}
+.hof-picker-item:hover {
+    border-color: var(--frost);
+    color: var(--parchment);
+}
+.hof-picker-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    image-rendering: pixelated;
+}
+.hof-picker-item span {
+    font-family: 'Galmuri9', monospace;
+    font-size: 10.5px;
+    text-align: center;
+    line-height: 1.3;
+    word-break: keep-all;
+}
+
+/* 명예의 전당 목록 */
+.hof-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.hof-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+}
+.hof-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--line);
+}
+.hof-card-title {
+    font-family: 'Galmuri14', monospace;
+    font-size: 16px;
+    color: var(--parchment);
+}
+.hof-card-author {
+    font-family: 'Galmuri9', monospace;
+    font-size: 12px;
+    color: var(--frost);
+}
+.hof-card-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 10px;
+    white-space: pre-line;
+}
+.hof-card-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
-.build-tag {
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    padding: 4px 8px;
-    border-radius: 2px;
-    font-size: 11px;
-    color: var(--text-dim);
+.hof-card-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-top: 10px;
 }
-.build-tag.weapon {
-    color: #ff8a65;
-    border-color: rgba(255, 138, 101, 0.3);
-}
-.build-tag.enchant {
-    color: #ffd54f;
-    border-color: rgba(255, 213, 79, 0.3);
-}
-.build-tag.costume {
-    color: #ba68c8;
-    border-color: rgba(186, 104, 200, 0.3);
-}
-.build-tag.combo {
-    color: #4fc3f7;
-    border-color: rgba(79, 195, 247, 0.3);
-}
-.build-form {
-    background: var(--card-bg);
-    border: 2px solid var(--border);
-    border-radius: 4px;
-    padding: 16px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
-}
-.build-form-title {
-    font-size: 16px;
-    color: var(--text);
-    margin: 0 0 16px 0;
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 8px;
-    text-align: center;
-}
-.form-group {
-    margin-bottom: 12px;
-}
-.form-group label {
-    display: block;
-    font-size: 12px;
+.hof-card-cell {
+    aspect-ratio: 1 / 1;
+    background: var(--void);
+    border: 1px solid var(--line);
     color: var(--muted);
-    margin-bottom: 6px;
-}
-.form-group input,
-.form-group textarea,
-.form-group select {
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px;
-    font-family: "Galmuri7", sans-serif;
-    font-size: 13px;
-    border-radius: 2px;
-}
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-.form-row {
+    font-family: 'Galmuri7', monospace;
+    font-size: 9px;
     display: flex;
-    gap: 12px;
-}
-.form-row .form-group {
-    flex: 1;
-}
-.submit-btn {
-    width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    background: #4caf50;
-    color: #000000;
-    font-weight: bold;
-    border: 2px solid #2e7d32;
-    font-family: "Galmuri7", sans-serif;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
     border-radius: 4px;
-    transition:
-        transform 0.1s,
-        box-shadow 0.1s;
+    word-break: break-all;
+    overflow: hidden;
 }
-.submit-btn:hover {
-    background: #66bb6a;
+.hof-card-cell img {
+    max-width: 100%;
+    max-height: 100%;
+    image-rendering: pixelated;
 }
-.submit-btn:active {
-    transform: translateY(4px);
-    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
-}
-.submit-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
-}
-.load-current-btn {
-    background: #ffd54f;
-    color: #000000;
-    font-weight: bold;
-    border: 2px solid #fbc02d;
-    font-family: "Galmuri7", sans-serif;
-    padding: 10px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    width: 100%;
-    margin-bottom: 16px;
-    border-radius: 4px;
-    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
-    transition: all 0.15s;
-}
-.load-current-btn:hover {
-    background: #ffe082;
-    transform: translateY(-1px);
-}
-.load-current-btn:active {
-    transform: translateY(2px);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* Custom Select Styles */
-.custom-select-wrapper {
-    position: relative;
-    user-select: none;
-    width: 100%;
-}
-.custom-select {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px;
-    font-family: "Galmuri7", sans-serif;
-    font-size: 13px;
-    border-radius: 2px;
-    cursor: pointer;
-    display: flex;
+.pill.hof-pill-img {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    height: 42px;
-    box-sizing: border-box;
+    gap: 5px;
 }
-.custom-select:hover {
-    border-color: var(--accent);
+.pill.hof-pill-img img {
+    width: 16px;
+    height: 16px;
+    image-rendering: pixelated;
 }
-.custom-select-options {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    z-index: 100;
-    max-height: 200px;
-    overflow-y: auto;
-    display: none;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-}
-.custom-select-options.open {
-    display: block;
-}
-.custom-select-option {
-    padding: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-light);
-}
-.custom-select-option:last-child {
-    border-bottom: none;
-}
-.custom-select-option:hover {
-    background: var(--bg);
-    color: var(--accent);
-}
-.custom-select-option img {
-    width: 24px;
-    height: 24px;
-    object-fit: contain;
-}
-.custom-select-selected {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.custom-select-selected img {
-    width: 24px;
-    height: 24px;
-    object-fit: contain;
+.hof-card-screenshot {
+    max-width: 100%;
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
 }
