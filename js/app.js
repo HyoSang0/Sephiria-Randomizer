@@ -590,22 +590,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 /* ================= HALL OF FAME (명예의 전당) ================= */
 const HOF_COLLECTION = "hall_of_fame";
 const HOF_COLS = 6; // 인게임 인벤토리 가로 칸 수에 맞춤
-const HOF_ASSET_BASE = "https://raw.githubusercontent.com/gjanwjstk/sephiria-fan-kit/main/";
+// HOF assets are bundled with the site so the picker does not depend on the
+// external Fan Kit repository at runtime.
+const HOF_ASSET_BASE = "./assets/";
+const HOF_DATA_BASE = "./data/";
 let hofGridRows = 0;
 let hofScreenshotDataUrl = null;
-let hofScreenshotImage = null; // 인식(OCR/색상 분석)에 쓰는 Image 객체
+let hofScreenshotImage = null; // 브라우저 내 이미지 비교에 쓰는 Image 객체
 
 // 선택된 코스튬/무기/기적(단일) + 콤보(다중) 데이터를 들고 있음. 각 항목은 hofPickerData의 item 객체.
 let hofSelected = { costume: null, weapon: null, miracle: null, combos: [] };
 
 /* -- Fan Kit 데이터 로딩 -- */
 const HOF_CSV_SOURCES = {
-    artifact: { path: "artifact_index.csv", folder: "Artifacts" },
-    tablet: { path: "tablet_index.csv", folder: "Tablets" },
-    weapon: { path: "weapon_index.csv", folder: "Weapons" },
-    costume: { path: "Costumes/costume_index.csv", folder: "Costumes" },
-    combo: { path: "Categories/category_index.csv", folder: "Categories" },
-    miracle: { path: "Miracles/miracle_index.csv", folder: "Miracles" },
+    artifact: { path: "artifact_index.csv", folder: "artifacts" },
+    tablet: { path: "tablet_index.csv", folder: "tablets" },
+    weapon: { path: "weapon_index.csv", folder: "weapons" },
+    costume: { path: "costume_index.csv", folder: "costumes" },
+    combo: { path: "category_index.csv", folder: "combos" },
+    miracle: { path: "miracle_index.csv", folder: "miracles" },
 };
 let hofPickerData = {};
 let hofPickerDataLoaded = false;
@@ -639,12 +642,34 @@ function hofCsvParse(text) {
 function hofImageUrl(kind, file, framed) {
     if (!file) return "";
     const folder = HOF_CSV_SOURCES[kind].folder;
-    const hasIconsSubfolder = kind === "artifact" || kind === "tablet" || kind === "weapon" || kind === "miracle";
-    if (framed && (kind === "artifact" || kind === "tablet" || kind === "weapon")) {
-        return `${HOF_ASSET_BASE}${folder}/Framed/1x/${encodeURIComponent(file)}.png`;
-    }
-    const sub = hasIconsSubfolder ? "Icons/1x" : "1x";
-    return `${HOF_ASSET_BASE}${folder}/${sub}/${encodeURIComponent(file)}.png`;
+    return `${HOF_ASSET_BASE}${folder}/${encodeURIComponent(file)}.png`;
+}
+
+function hofImageExists(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const timer = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            resolve(false);
+        }, 5000);
+        img.onload = () => {
+            clearTimeout(timer);
+            resolve(true);
+        };
+        img.onerror = () => {
+            clearTimeout(timer);
+            resolve(false);
+        };
+        img.src = url;
+    });
+}
+
+async function filterAvailableHofItems(items) {
+    const results = await Promise.all(
+        items.map(async (item) => (await hofImageExists(item.icon) ? item : null)),
+    );
+    return results.filter(Boolean);
 }
 
 async function loadHofPickerData() {
@@ -654,7 +679,7 @@ async function loadHofPickerData() {
         const entries = await Promise.all(
             Object.entries(HOF_CSV_SOURCES).map(async ([kind, { path }]) => {
                 try {
-                    const res = await fetch(HOF_ASSET_BASE + path);
+                    const res = await fetch(HOF_DATA_BASE + path);
                     if (!res.ok) throw new Error(`${kind}: ${res.status}`);
                     const rows = hofCsvParse(await res.text());
                     const items = rows
@@ -671,7 +696,7 @@ async function loadHofPickerData() {
                             icon: hofImageUrl(kind, r.file, false),
                             framed: hofImageUrl(kind, r.file, true),
                         }));
-                    return [kind, items];
+                    return [kind, await filterAvailableHofItems(items)];
                 } catch (err) {
                     console.warn("HOF asset index load failed:", kind, err);
                     return [kind, []];
@@ -867,7 +892,7 @@ function handleHofScreenshotUpload(event) {
         preview.src = hofScreenshotDataUrl;
         preview.style.display = "block";
 
-        // 인식 기능에서 쓸 Image 객체 준비
+        // 브라우저 내 인식 기능에서 쓸 Image 객체 준비
         const img = new Image();
         img.onload = () => {
             hofScreenshotImage = img;
@@ -903,106 +928,29 @@ function resetHofForm() {
     for (let i = 0; i < 4; i++) addHofInventoryRow();
 }
 
-/* -- 스크린샷 인식 (베타): 콤보 텍스트 OCR + 인벤토리 칸 점유 여부 감지 --
-   주의: 실제 인게임 스크린샷 표본이 없어서 정확한 크롭 좌표/아이템 이미지 매칭 데이터로
-   학습시키지 못했음. 아래 좌표 비율은 "콤보 효과 패널 = 좌상단, 인벤토리 그리드 = 중앙"
-   형태로 UI 전체를 캡처했다고 가정한 값이라, 실제 스크린샷 프레이밍에 따라 정확도가
-   크게 달라질 수 있음. 콤보는 화면 속 글자를 읽어서 이름을 맞혀보고,
-   인벤토리는 "칸에 뭔가 있는지 없는지"만 색 차이로 추정할 뿐 아이템 이름까지는 읽지 못함.
-*/
+/* -- 스크린샷 인식 V1: 현재 화면의 6열 메인 인벤토리와 콤보 아이콘 -- */
 async function recognizeHofScreenshot() {
     if (!hofScreenshotImage) return;
-    if (typeof Tesseract === "undefined") {
-        alert("인식 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인해주세요.");
+    if (!window.HofScreenshotRecognizer) {
+        alert("스크린샷 인식 모듈을 불러오지 못했어요.");
         return;
     }
 
     const btn = document.getElementById("hof-recognize-btn");
     const status = document.getElementById("hof-recognize-status");
     btn.disabled = true;
-    status.textContent = "🔍 콤보 텍스트를 읽는 중...";
+    status.textContent = "스크린샷 영역을 찾는 중...";
 
     try {
         await loadHofPickerData();
-        const img = hofScreenshotImage;
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-
-        // ---- 1) 콤보 효과 패널(좌상단) 텍스트 인식 ----
-        const comboW = w * 0.34;
-        const comboH = h * 0.36;
-        const comboCanvas = document.createElement("canvas");
-        comboCanvas.width = comboW;
-        comboCanvas.height = comboH;
-        comboCanvas.getContext("2d").drawImage(img, 0, 0, comboW, comboH, 0, 0, comboW, comboH);
-
-        const ocrResult = await Tesseract.recognize(comboCanvas.toDataURL(), "kor");
-        const ocrText = (ocrResult.data.text || "").replace(/\s+/g, "");
-
-        const comboList = hofPickerData.combo || [];
-        const matchedCombos = comboList.filter((c) => ocrText.includes(c.nameKo.replace(/\s+/g, "")));
-
-        matchedCombos.forEach((c) => {
-            if (!hofSelected.combos.some((existing) => existing.file === c.file)) {
-                hofSelected.combos.push(c);
-            }
+        const result = await window.HofScreenshotRecognizer.recognize({
+            image: hofScreenshotImage,
+            pickerData: hofPickerData,
+            onProgress(message) {
+                status.textContent = message;
+            },
         });
-        if (matchedCombos.length > 0) renderHofComboChips();
-
-        // ---- 2) 인벤토리 그리드(중앙) 점유 칸 감지 ----
-        status.textContent = "🔍 인벤토리 칸을 분석하는 중...";
-
-        const invX = w * 0.38;
-        const invY = h * 0.08;
-        const invW = w * 0.38;
-        const invH = h * 0.7;
-        const invRows = 4; // 명예의 전당 기본 그리드 행 수와 맞춤
-        const invCols = HOF_COLS;
-
-        const fullCanvas = document.createElement("canvas");
-        fullCanvas.width = w;
-        fullCanvas.height = h;
-        const ctx = fullCanvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-
-        const cellW = invW / invCols;
-        const cellH = invH / invRows;
-        const samples = [];
-        for (let r = 0; r < invRows; r++) {
-            for (let c = 0; c < invCols; c++) {
-                const cx = Math.round(invX + cellW * (c + 0.5));
-                const cy = Math.round(invY + cellH * (r + 0.5));
-                const patch = ctx.getImageData(Math.max(0, cx - 6), Math.max(0, cy - 6), 12, 12).data;
-                let rSum = 0, gSum = 0, bSum = 0, n = 0;
-                for (let i = 0; i < patch.length; i += 4) {
-                    rSum += patch[i];
-                    gSum += patch[i + 1];
-                    bSum += patch[i + 2];
-                    n++;
-                }
-                samples.push([rSum / n, gSum / n, bSum / n]);
-            }
-        }
-
-        // 표본들 중 가장 흔한 색 그룹을 "빈 칸" 기준색으로 추정
-        const baseline = estimateHofBaselineColor(samples);
-        const occupied = samples.map(([r, g, b]) => {
-            const dist = Math.sqrt((r - baseline[0]) ** 2 + (g - baseline[1]) ** 2 + (b - baseline[2]) ** 2);
-            return dist > 22;
-        });
-
-        while (hofGridRows < invRows) addHofInventoryRow();
-        const cells = document.querySelectorAll("#hof-grid .hof-cell");
-        occupied.forEach((isOccupied, idx) => {
-            const cell = cells[idx];
-            if (cell && isOccupied && !cell.dataset.file) {
-                cell.innerHTML = `<span class="hof-cell-guess">❓</span>`;
-                cell.title = "칸이 차 있는 것으로 추정됨 - 눌러서 실제 아이템을 골라주세요";
-            }
-        });
-
-        const occupiedCount = occupied.filter(Boolean).length;
-        status.textContent = `✅ 인식 완료 — 콤보 ${matchedCombos.length}개 인식, 인벤토리 ${occupiedCount}칸 사용 중으로 추정했어요. "❓" 칸은 실제 아이템 이름으로 바꿔주세요.`;
+        applyHofRecognitionResult(result);
     } catch (err) {
         console.error(err);
         status.textContent = "인식에 실패했어요. 스크린샷을 다시 확인해주세요.";
@@ -1011,29 +959,70 @@ async function recognizeHofScreenshot() {
     }
 }
 
-// 표본 색상들을 서로 비슷한 것끼리 묶어, 가장 큰 그룹(=가장 흔한 색)의 평균을
-// "빈 칸" 기준색으로 추정한다. 인벤토리는 보통 빈 칸이 더 많다는 가정에 기반함.
-function estimateHofBaselineColor(samples) {
-    const groups = [];
-    samples.forEach((s) => {
-        let matched = false;
-        for (const g of groups) {
-            const dist = Math.sqrt((s[0] - g.avg[0]) ** 2 + (s[1] - g.avg[1]) ** 2 + (s[2] - g.avg[2]) ** 2);
-            if (dist < 14) {
-                g.items.push(s);
-                g.avg = [
-                    g.items.reduce((sum, x) => sum + x[0], 0) / g.items.length,
-                    g.items.reduce((sum, x) => sum + x[1], 0) / g.items.length,
-                    g.items.reduce((sum, x) => sum + x[2], 0) / g.items.length,
-                ];
-                matched = true;
-                break;
-            }
+function applyHofRecognitionResult(result) {
+    const status = document.getElementById("hof-recognize-status");
+    if (!result.inventoryDetected && !result.comboDetected) {
+        status.textContent = "인식 가능한 메인 인벤토리나 콤보 영역을 찾지 못했어요.";
+        return;
+    }
+
+    while (hofGridRows < result.rows) addHofInventoryRow();
+    const grid = document.getElementById("hof-grid");
+    if (result.inventoryDetected) {
+        const detectedCellCount = result.inventory.reduce(
+            (last, slot) => slot.state === "absent" ? last : Math.max(last, slot.index + 1),
+            0,
+        );
+        while (grid.children.length > detectedCellCount && grid.lastElementChild) {
+            grid.lastElementChild.remove();
         }
-        if (!matched) groups.push({ items: [s], avg: s });
+        hofGridRows = Math.ceil(detectedCellCount / HOF_COLS);
+    }
+    const cells = document.querySelectorAll("#hof-grid .hof-cell");
+    let occupiedCount = 0;
+    let matchedCount = 0;
+
+    result.inventory.forEach((slot) => {
+        const cell = cells[slot.index];
+        if (!cell || slot.state === "absent") return;
+
+        delete cell.dataset.kind;
+        delete cell.dataset.file;
+        if (slot.state === "occupied") {
+            occupiedCount++;
+            if (slot.item) {
+                setHofCellItem("main", slot.index, slot.item);
+                matchedCount++;
+            } else {
+                cell.innerHTML = `<span class="hof-cell-guess">?</span>`;
+                cell.title = "아이템 슬롯으로 감지됨 - 클릭해서 실제 아이템을 선택하세요.";
+            }
+        } else if (slot.state === "plus") {
+            cell.innerHTML = `<span class="hof-cell-guess">+</span>`;
+            cell.title = "+ 슬롯으로 감지됨";
+        } else if (slot.state === "minus") {
+            cell.innerHTML = `<span class="hof-cell-guess">−</span>`;
+            cell.title = "- 슬롯으로 감지됨";
+        } else {
+            cell.innerHTML = "";
+            cell.title = slot.state === "empty" ? "빈 슬롯으로 감지됨" : "슬롯 상태를 판별하지 못함";
+        }
     });
-    groups.sort((a, b) => b.items.length - a.items.length);
-    return groups[0] ? groups[0].avg : [0, 0, 0];
+
+    result.combos.forEach((combo) => {
+        if (!hofSelected.combos.some((selected) => selected.file === combo.file)) {
+            hofSelected.combos.push(combo);
+        }
+    });
+    if (result.combos.length) renderHofComboChips();
+
+    const inventoryMessage = result.inventoryDetected
+        ? `인벤토리 ${occupiedCount}칸 중 ${matchedCount}칸 매칭`
+        : "인벤토리 영역 미검출";
+    const comboMessage = result.comboDetected
+        ? `콤보 ${result.combos.length}개 매칭`
+        : "콤보 영역 미검출";
+    status.textContent = `인식 완료: ${inventoryMessage}, ${comboMessage}. 필요하면 칸을 클릭해 수정하세요.`;
 }
 
 async function submitHofEntry() {

@@ -24,8 +24,6 @@
 
         <link rel="stylesheet" href="./css/style.css" />
 
-        <!-- Tesseract.js: 스크린샷 인식(OCR)용, 명예의 전당 자동 인식 베타 기능에서 사용 -->
-        <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     </head>
     <body>
         <div class="wrap">
@@ -266,8 +264,8 @@
                         </button>
                         <div class="hof-recognize-status" id="hof-recognize-status"></div>
                         <div class="hof-screenshot-note">
-                            ※ 베타 기능: 콤보는 화면 속 글자를 읽어서, 인벤토리는 칸이 비었는지/차 있는지만 자동으로 표시해요.
-                            자동 인식된 칸은 직접 이미지를 골라 채워주세요. 스크린샷은 미리보기만 되고 서버 저장은 아직 안 돼요.
+                            ※ 현재 화면에 보이는 메인 인벤토리와 콤보만 인식해요. 스크롤로 가려진 항목과 하단 보조 가방은 제외됩니다.
+                            결과가 다르면 기존처럼 칸이나 콤보를 눌러 수정할 수 있어요. 스크린샷은 브라우저에서만 처리하며 서버에 저장하지 않습니다.
                         </div>
                     </div>
 
@@ -329,6 +327,7 @@
         </div>
 
         <script src="./js/constants.js"></script>
+        <script src="./js/hof-screenshot.js"></script>
         <script src="./js/app.js"></script>
     </body>
 </html>
