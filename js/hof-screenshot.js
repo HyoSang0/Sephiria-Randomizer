@@ -220,6 +220,208 @@
         };
     }
 
+    // ---- Level-badge number recognition (+N / -N shown on empty/occupied slots) ----
+    // Templates are rendered at runtime from the site's own Galmuri11-Bold font
+    // (already loaded via CSS), so no extra asset files are needed. Matching uses
+    // a hole-count pre-filter (0/4/6/8/9 all enclose one+ region, 8 encloses two,
+    // the rest enclose none) before falling back to aspect-preserving pixel overlap,
+    // since raw overlap alone confuses same-silhouette digits like 0 vs 3 at this size.
+    const DIGIT_CHARS = "0123456789+-/";
+    let digitTemplates = null;
+
+    function buildDigitTemplates() {
+        if (digitTemplates) return digitTemplates;
+        digitTemplates = {};
+        const canvas = document.createElement("canvas");
+        canvas.width = 40;
+        canvas.height = 24;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.font = "700 14px 'Galmuri11'";
+        ctx.textBaseline = "top";
+        for (const ch of DIGIT_CHARS) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#000000";
+            ctx.fillText(ch, 2, 2);
+            const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            digitTemplates[ch] = binarizeAlpha(data, canvas.width, canvas.height);
+        }
+        return digitTemplates;
+    }
+
+    // Reduces an RGBA buffer to a 0/1 ink grid using alpha (text drawn as solid fill).
+    function binarizeAlpha(data, width, height) {
+        const grid = new Uint8Array(width * height);
+        for (let i = 0; i < width * height; i++) grid[i] = data[i * 4 + 3] > 128 ? 1 : 0;
+        return { grid, width, height };
+    }
+
+    // Reduces a screenshot patch to a 0/1 ink grid using a caller-supplied color test.
+    function binarizeColor(data, width, height, isInk) {
+        const grid = new Uint8Array(width * height);
+        for (let i = 0; i < width * height; i++) {
+            const o = i * 4;
+            grid[i] = isInk(data[o], data[o + 1], data[o + 2]) ? 1 : 0;
+        }
+        return { grid, width, height };
+    }
+
+    function inkBounds(bitmap) {
+        let minX = bitmap.width, maxX = -1, minY = bitmap.height, maxY = -1;
+        for (let y = 0; y < bitmap.height; y++) {
+            for (let x = 0; x < bitmap.width; x++) {
+                if (bitmap.grid[y * bitmap.width + x]) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (maxX < 0) return null;
+        return { minX, maxX, minY, maxY };
+    }
+
+    // Splits a wide ink bitmap into per-character column bands, merging thin gaps
+    // that fall inside a single glyph (e.g. the two strokes of "+").
+    function splitIntoCharacters(bitmap, mergeGap = 2) {
+        const colHasInk = new Array(bitmap.width).fill(false);
+        for (let x = 0; x < bitmap.width; x++) {
+            for (let y = 0; y < bitmap.height; y++) {
+                if (bitmap.grid[y * bitmap.width + x]) { colHasInk[x] = true; break; }
+            }
+        }
+        const raw = [];
+        let start = -1;
+        for (let x = 0; x <= bitmap.width; x++) {
+            if (x < bitmap.width && colHasInk[x]) {
+                if (start < 0) start = x;
+            } else if (start >= 0) {
+                raw.push([start, x]);
+                start = -1;
+            }
+        }
+        const merged = [];
+        for (const region of raw) {
+            const previous = merged[merged.length - 1];
+            if (previous && region[0] - previous[1] <= mergeGap) previous[1] = region[1];
+            else merged.push(region);
+        }
+        return merged;
+    }
+
+    // Resizes a cropped glyph onto a fixed square canvas, preserving aspect ratio,
+    // so thin glyphs (like "-") can't be stretched into misleadingly solid blobs.
+    function toSquareBitmap(bitmap, box, size = 32) {
+        const w = box.maxX - box.minX + 1;
+        const h = box.maxY - box.minY + 1;
+        const scale = (size - 4) / Math.max(w, h);
+        const nw = Math.max(1, Math.round(w * scale));
+        const nh = Math.max(1, Math.round(h * scale));
+        const grid = new Uint8Array(size * size);
+        const offX = Math.floor((size - nw) / 2);
+        const offY = Math.floor((size - nh) / 2);
+        for (let y = 0; y < nh; y++) {
+            const srcY = box.minY + Math.floor((y / nh) * h);
+            for (let x = 0; x < nw; x++) {
+                const srcX = box.minX + Math.floor((x / nw) * w);
+                if (bitmap.grid[srcY * bitmap.width + srcX]) {
+                    grid[(y + offY) * size + (x + offX)] = 1;
+                }
+            }
+        }
+        return { grid, width: size, height: size };
+    }
+
+    function countHoles(square) {
+        const { width, height, grid } = square;
+        const visited = new Uint8Array(width * height);
+        const isBackground = (x, y) => !grid[y * width + x];
+        const queue = [];
+        for (let x = 0; x < width; x++) {
+            [0, height - 1].forEach((y) => {
+                if (isBackground(x, y) && !visited[y * width + x]) { visited[y * width + x] = 1; queue.push([x, y]); }
+            });
+        }
+        for (let y = 0; y < height; y++) {
+            [0, width - 1].forEach((x) => {
+                if (isBackground(x, y) && !visited[y * width + x]) { visited[y * width + x] = 1; queue.push([x, y]); }
+            });
+        }
+        while (queue.length) {
+            const [x, y] = queue.pop();
+            for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                const idx = ny * width + nx;
+                if (!visited[idx] && isBackground(nx, ny)) { visited[idx] = 1; queue.push([nx, ny]); }
+            }
+        }
+        // Any un-reached background pixel is enclosed by ink -> flood-fill it as one hole.
+        let holes = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = y * width + x;
+                if (!grid[idx] && !visited[idx]) {
+                    holes++;
+                    const stack = [[x, y]];
+                    visited[idx] = 1;
+                    while (stack.length) {
+                        const [cx, cy] = stack.pop();
+                        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+                            const nx = cx + dx, ny = cy + dy;
+                            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                            const nIdx = ny * width + nx;
+                            if (!grid[nIdx] && !visited[nIdx]) { visited[nIdx] = 1; stack.push([nx, ny]); }
+                        }
+                    }
+                }
+            }
+        }
+        return holes;
+    }
+
+    function overlapScore(a, b) {
+        let match = 0;
+        for (let i = 0; i < a.grid.length; i++) if ((a.grid[i] > 0) === (b.grid[i] > 0)) match++;
+        return match / a.grid.length;
+    }
+
+    // Recognizes a short digit/sign string (e.g. "+2", "-1", "3/1") from a badge
+    // region. isInk selects which pixels count as text (badge color varies: white
+    // level-modifier text, red minus-badges, yellow artifact-level readouts).
+    function recognizeNumber(patch, region, isInk) {
+        const templates = buildDigitTemplates();
+        const ctx = patch.getContext("2d", { willReadFrequently: true });
+        const { data, width, height } = ctx.getImageData(region.x, region.y, region.width, region.height);
+        const bitmap = binarizeColor(data, region.width, region.height, isInk);
+        const charRegions = splitIntoCharacters(bitmap);
+        let result = "";
+        let minScore = 1;
+        for (const [x0, x1] of charRegions) {
+            const columnBitmap = { grid: new Uint8Array(region.width * region.height), width: region.width, height: region.height };
+            for (let y = 0; y < region.height; y++) {
+                for (let x = x0; x < x1; x++) columnBitmap.grid[y * region.width + x] = bitmap.grid[y * region.width + x];
+            }
+            const box = inkBounds(columnBitmap);
+            if (!box) continue;
+            const square = toSquareBitmap(columnBitmap, box);
+            const holes = countHoles(square);
+            const sameHoleChars = Object.keys(templates).filter((ch) => countHoles(templates[ch]) === holes);
+            const pool = sameHoleChars.length ? sameHoleChars : Object.keys(templates);
+            let bestChar = null;
+            let bestScore = -1;
+            for (const ch of pool) {
+                const score = overlapScore(square, templates[ch]);
+                if (score > bestScore) { bestScore = score; bestChar = ch; }
+            }
+            if (bestChar) {
+                result += bestChar;
+                minScore = Math.min(minScore, bestScore);
+            }
+        }
+        return result ? { text: result, confidence: minScore } : null;
+    }
+
     function classifySlot(layout, row, col) {
         const centerX = layout.xCenters[col];
         const centerY = layout.yCenters[row];
@@ -259,14 +461,33 @@
         }
 
         const total = pixels.length / 4;
+        const badgeRegion = {
+            x: 0,
+            y: 0,
+            width: Math.max(1, Math.round(patch.width * 0.55)),
+            height: Math.max(1, Math.round(patch.height * 0.3)),
+        };
         if (framedItemPixels / total > 0.88 && itemPixels / total < 0.02 && redPixels < 3 && lightPixels < 3) {
             return { state: "absent", patch };
         }
         if (itemPixels / total > 0.12 || framedItemPixels / total > 0.18) {
-            return { state: "occupied", patch };
+            // Occupied slots can additionally show the artifact's own level readout
+            // (e.g. "3/1") in the same corner; best-effort only, not required for matching.
+            const level = recognizeNumber(
+                patch,
+                badgeRegion,
+                (r, g, b) => r > 190 && g > 160 && b < 90, // 노란 텍스트만, 프레임/아이콘 색과 안 겹치게 엄격하게
+            );
+            return { state: "occupied", patch, level };
         }
-        if (redPixels > 3) return { state: "minus", patch };
-        if (lightPixels > 3) return { state: "plus", patch };
+        if (redPixels > 3) {
+            const badge = recognizeNumber(patch, badgeRegion, (r, g, b) => r > 150 && r > g * 1.3 && r > b * 1.05);
+            return { state: "minus", patch, badge };
+        }
+        if (lightPixels > 3) {
+            const badge = recognizeNumber(patch, badgeRegion, (r, g, b) => r > 165 && g > 135 && b > 115);
+            return { state: "plus", patch, badge };
+        }
         if (emptyPixels / total > 0.22) return { state: "empty", patch };
         return { state: "unknown", patch };
     }
@@ -511,7 +732,15 @@
                 for (let col = 0; col < inventoryLayout.cols; col++) {
                     const index = row * inventoryLayout.cols + col;
                     const classified = classifySlot(inventoryLayout, row, col);
-                    const result = { index, row, col, state: classified.state, item: null, score: 0 };
+                    const result = {
+                        index,
+                        row,
+                        col,
+                        state: classified.state,
+                        item: null,
+                        score: 0,
+                        badge: classified.badge || classified.level || null,
+                    };
                     if (classified.state === "occupied") {
                         if (onProgress) onProgress(`인벤토리 아이템을 비교하는 중... (${index + 1}/${inventoryLayout.rows * COLS})`);
                         const match = await matchAsset(

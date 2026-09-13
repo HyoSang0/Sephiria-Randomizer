@@ -1014,16 +1014,19 @@ function applyHofRecognitionResult(result) {
             if (slot.item) {
                 setHofCellItem("main", slot.index, slot.item);
                 matchedCount++;
+                if (slot.badge) {
+                    cell.title += ` (표시된 레벨: ${slot.badge.text})`;
+                }
             } else {
                 cell.innerHTML = `<span class="hof-cell-guess">?</span>`;
                 cell.title = "아이템 슬롯으로 감지됨 - 클릭해서 실제 아이템을 선택하세요.";
             }
-        } else if (slot.state === "plus") {
-            cell.innerHTML = `<span class="hof-cell-guess">+</span>`;
-            cell.title = "+ 슬롯으로 감지됨";
-        } else if (slot.state === "minus") {
-            cell.innerHTML = `<span class="hof-cell-guess">−</span>`;
-            cell.title = "- 슬롯으로 감지됨";
+        } else if (slot.state === "plus" || slot.state === "minus") {
+            const label = slot.badge ? slot.badge.text : slot.state === "plus" ? "+" : "−";
+            cell.innerHTML = `<span class="hof-cell-guess">${label}</span>`;
+            cell.title = slot.badge
+                ? `석판 효과로 레벨 ${slot.badge.text} 감지됨 (참고용, 자동으로 채워지진 않아요)`
+                : `${slot.state === "plus" ? "+" : "-"} 슬롯으로 감지됨`;
         } else {
             cell.innerHTML = "";
             cell.title = slot.state === "empty" ? "빈 슬롯으로 감지됨" : "슬롯 상태를 판별하지 못함";
